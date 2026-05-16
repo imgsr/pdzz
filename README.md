@@ -40,7 +40,7 @@
 
 ```bash
 # 下载脚本
-curl -O https://raw.githubusercontent.com/imgsr/派对制造工具箱/main/party_tool.sh
+curl -O https://raw.githubusercontent.com/imgsr/pdzz/main/party_tool.sh
 
 # 赋予执行权限
 chmod +x party_tool.sh
