@@ -39,4 +39,5 @@
 ### 一键运行
 
 ```bash
-curl -o party_tool.sh https://raw.githubusercontent.com/imgsr/pdzz/main/party_tool.sh && chmod +x party_tool.sh && bash party_tool.sh
+# 使用 ghproxy 代理加速
+curl -o party_tool.sh https://ghproxy.net/https://raw.githubusercontent.com/imgsr/pdzz/main/party_tool.sh && chmod +x party_tool.sh && bash party_tool.sh
