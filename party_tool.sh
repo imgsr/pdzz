@@ -1,7 +1,7 @@
 #!/system/bin/sh
 
 # ==================== 派对制造工具箱 ====================
-# 版本：4.3 使地图信息更加详细。
+# 版本：4.4 整合最新地图查询功能
 
 # ==================== 颜色定义 ====================
 GREEN='\033[0;32m'
@@ -59,7 +59,7 @@ check_and_install_python() {
     fi
 }
 
-# ==================== 配置文件路径，该路径没法访问其实，不管了，脚本能跑就行 ====================
+# ==================== 配置文件路径 ====================
 CONFIG_FILE="/data/local/tmp/party_tool_config.txt"
 
 # ==================== 默认配置 ====================
@@ -68,6 +68,9 @@ DEFAULT_DEVICE_ID="339f7abae868b7f0a833877b0d5d46454a3dc9a9992898f9096ab920295d3
 DEFAULT_SSN="3c05"
 DEFAULT_VER="2.1.93"
 DEFAULT_COOKIE="SERVERID=769e7e1294f37fd70e4a8fd5d4a4a403|1774672107|1774600237"
+
+# 最新地图查询默认数量
+MAP_COUNT=100
 
 # ==================== 随机生成Device ID ====================
 generate_random_device_id() {
@@ -94,6 +97,7 @@ load_config() {
     SSN=${SSN:-$DEFAULT_SSN}
     VER=${VER:-$DEFAULT_VER}
     COOKIE=${COOKIE:-$DEFAULT_COOKIE}
+    MAP_COUNT=${SAVED_MAP_COUNT:-100}
 }
 
 save_config() {
@@ -103,6 +107,7 @@ DEVICE_ID="$DEVICE_ID"
 SSN="$SSN"
 VER="$VER"
 COOKIE="$COOKIE"
+SAVED_MAP_COUNT="$MAP_COUNT"
 EOF
 }
 
@@ -123,9 +128,6 @@ get_session() {
     echo "$session"
 }
 
-# ==================== 调用Python检测 ====================
-check_and_install_python
-
 # ==================== 工具函数 ====================
 clear_screen() {
     printf "\033[2J\033[H"
@@ -134,7 +136,7 @@ clear_screen() {
 print_header() {
     clear_screen
     echo -e "${CYAN}╔════════════════════════════════════════╗${NC}"
-    echo -e "${CYAN}║      派对制造 Shell 工具箱 v4.3       ║${NC}"
+    echo -e "${CYAN}║      派对制造 Shell 工具箱 v4.4       ║${NC}"
     echo -e "${CYAN}╚════════════════════════════════════════╝${NC}"
     echo ""
 }
@@ -149,6 +151,7 @@ print_menu() {
     echo -e "${GREEN}2. 派对制造地图查询${NC}"
     echo -e "${GREEN}3. 派对制造排行榜查询${NC}"
     echo -e "${GREEN}4. 派对制造玩家信息查询${NC}"
+    echo -e "${GREEN}5. 查询最新地图${NC}"
     echo -e "${RED}0. 退出工具${NC}"
     echo -e "${YELLOW}════════════════════════════════════════${NC}"
     echo ""
@@ -621,7 +624,7 @@ elif status == 2:
 elif 11 <= status <= 20:
     status_desc = "🟡 可能审核中"
 elif status >= 21:
-    status_desc = "⏳ 审核中（待审核）"
+    status_desc = "⏳ 审核中"
 else:
     status_desc = "✅ 正常"
 
@@ -1154,8 +1157,9 @@ try:
             show_list = []
             for f in friends[:3]:
                 f_nick = f.get('nickName', '未知')
+                f_userShortId = f.get('userShortId', '无')
                 f_intimacy = f.get('intimacy', 0)
-                show_list.append(f"{f_nick}({f_intimacy})")
+                show_list.append(f"{f_nick}[{f_userShortId}]({f_intimacy})")
             friends_text = ", ".join(show_list)
             if len(friends) > 3:
                 friends_text += f" 等{len(friends)}人"
@@ -1170,7 +1174,235 @@ EOF
     read input
 }
 
+# ==================== 功能5：最新地图查询（新增） ====================
+func_latest_maps() {
+    while true; do
+        print_header
+        echo -e "${YELLOW}>>> 最新地图查询${NC}\n"
+        
+        echo -e "${GREEN}请选择难度类型：${NC}"
+        echo "  1. 所有难度"
+        echo "  2. 简单"
+        echo "  3. 中等"
+        echo "  4. 困难"
+        echo "  5. 超难"
+        echo "  6. 自定义查询数量（当前: $MAP_COUNT）"
+        echo "  0. 返回主菜单"
+        echo ""
+        
+        read -p "请选择 [0-6]: " diff_choice
+        
+        case $diff_choice in
+            1)
+                query_latest_maps "all" "所有"
+                ;;
+            2)
+                query_latest_maps "easy" "简单"
+                ;;
+            3)
+                query_latest_maps "medium" "中等"
+                ;;
+            4)
+                query_latest_maps "hard" "困难"
+                ;;
+            5)
+                query_latest_maps "insane" "超难"
+                ;;
+            6)
+                echo -e "\n${BLUE}当前查询数量: $MAP_COUNT (最大100)${NC}"
+                echo -e "${YELLOW}请输入新的查询数量 [1-100]:${NC}"
+                read -r new_count
+                if [[ "$new_count" =~ ^[0-9]+$ ]] && [ "$new_count" -ge 1 ] && [ "$new_count" -le 100 ]; then
+                    MAP_COUNT=$new_count
+                    save_config
+                    echo -e "${GREEN}✅ 查询数量已设置为 $MAP_COUNT${NC}"
+                else
+                    echo -e "${RED}❌ 输入无效，请输入1-100之间的数字${NC}"
+                fi
+                sleep 1
+                ;;
+            0)
+                return
+                ;;
+            *)
+                echo -e "${RED}无效选项${NC}"
+                sleep 1
+                ;;
+        esac
+    done
+}
+
+query_latest_maps() {
+    local rank_type=$1
+    local rank_name=$2
+    
+    print_header
+    echo -e "${YELLOW}>>> 查询最新地图 (${rank_name})${NC}\n"
+    
+    echo -e "${BLUE}[1/3] 获取Session...${NC}"
+    SESSION=$(get_session)
+    
+    if [ -z "$SESSION" ]; then
+        echo -e "${RED}❌ 获取Session失败${NC}"
+        echo -e "${CYAN}按回车键返回...${NC}"
+        read input
+        return 1
+    fi
+    echo -e "${GREEN}✅ Session获取成功${NC}\n"
+    
+    # 构建rank参数
+    if [ "$rank_type" = "all" ]; then
+        RANK_PARAM="all"
+    else
+        RANK_PARAM="$rank_type"
+    fi
+    
+    echo -e "${BLUE}[2/3] 获取地图ID列表 (数量: $MAP_COUNT)...${NC}"
+    
+    RANGE_RESP=$(curl -s -X POST "https://battlecraft.tuimotuimo.com/battlecraft/ugclevel/range2" \
+      -H "Cookie: $COOKIE" \
+      -H "Auth: $SESSION" \
+      -H "Content-Type: application/x-www-form-urlencoded" \
+      -H "ssn: $SSN" \
+      -H "ver: $VER" \
+      -d "start=0&count=$MAP_COUNT&idonly=true&filter=latest&rank=$RANK_PARAM" 2>/dev/null)
+    
+    # 提取ID列表
+    MAP_IDS=$(echo "$RANGE_RESP" | python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    ids = data.get('data', {}).get('levelIds', [])
+    print(','.join(str(i) for i in ids))
+except:
+    print('')
+" 2>/dev/null)
+    
+    if [ -z "$MAP_IDS" ]; then
+        echo -e "${RED}❌ 获取地图ID列表失败${NC}"
+        echo -e "${CYAN}按回车键返回...${NC}"
+        read input
+        return 1
+    fi
+    
+    ID_COUNT=$(echo "$MAP_IDS" | tr ',' '\n' | grep -c .)
+    echo -e "${GREEN}✅ 获取到 $ID_COUNT 个地图ID${NC}\n"
+    
+    echo -e "${BLUE}[3/3] 获取地图详情...${NC}"
+    
+    # 使用/storage/emulated/0/目录，确保可访问
+    TEMP_DIR="/storage/emulated/0/party_tool_temp"
+    mkdir -p "$TEMP_DIR" 2>/dev/null
+    TEMP_FILE="$TEMP_DIR/latest_maps_temp.json"
+    
+    curl -s -X POST "https://battlecraft.tuimotuimo.com/battlecraft/ugclevel/getlist" \
+      -H "Cookie: $COOKIE" \
+      -H "Auth: $SESSION" \
+      -H "Content-Type: application/x-www-form-urlencoded" \
+      -H "ssn: $SSN" \
+      -H "ver: $VER" \
+      --data-urlencode "ids=$MAP_IDS" \
+      --data-urlencode "needBestPlayer=false" \
+      --data-urlencode "needMarkList=false" \
+      --data-urlencode "needAlbum=false" 2>/dev/null > "$TEMP_FILE"
+    
+    echo -e "\n${GREEN}════════════════ 最新地图列表 (${rank_name}) ════════════════${NC}\n"
+    
+    # 使用Python解析并显示
+    python3 << EOF
+import json
+
+def to_base36(num):
+    if num == 0:
+        return "0"
+    digits = "0123456789abcdefghijklmnopqrstuvwxyz"
+    res = ""
+    n = num
+    while n > 0:
+        n, rem = divmod(n, 36)
+        res = digits[rem] + res
+    return res
+
+try:
+    with open("$TEMP_FILE", "r", encoding="utf-8") as f:
+        data = json.load(f)
+    
+    if data.get('code') != 0:
+        print(f"  接口返回错误码: {data.get('code')}")
+        print(f"  错误信息: {data.get('msg', '未知')}")
+        sys.exit(0)
+    
+    levels = data.get('data', {}).get('levels', [])
+    
+    if not levels:
+        print("  ⚠️ 暂无数据")
+        sys.exit(0)
+    
+    # 难度类型映射
+    rank_names = {
+        'easy': '简单',
+        'medium': '中等',
+        'hard': '困难',
+        'insane': '超难'
+    }
+    
+    # 表头
+    print(f"  {'序号':<4} {'地图名称':<20} {'地图码':<10} {'难度':<6} {'作者':<12} {'游玩':<8} {'点赞':<6} {'评论':<6}")
+    print(f"  {'─'*85}")
+    
+    for idx, lev in enumerate(levels, 1):
+        map_id = lev.get('id', 0)
+        map_code = to_base36(map_id)
+        map_name = lev.get('name', '无名称')
+        if len(map_name) > 18:
+            map_name = map_name[:16] + ".."
+        
+        rank = lev.get('rank', 'unknown')
+        rank_display = rank_names.get(rank, rank)
+        
+        play_count = lev.get('playCount', 0)
+        likes = lev.get('likes', 0)
+        coments = lev.get('coments', 0)
+        
+        owner = lev.get('owner', {})
+        author_name = owner.get('nickName', '未知')
+        if len(author_name) > 10:
+            author_name = author_name[:8] + ".."
+        
+        # 格式化数字（千分位）
+        if play_count >= 1000:
+            play_str = f"{play_count:,}"
+        else:
+            play_str = str(play_count)
+        
+        print(f"  {idx:<4} {map_name:<20} {map_code:<10} {rank_display:<6} {author_name:<12} {play_str:<8} {likes:<6} {coments:<6}")
+    
+    # 统计汇总
+    total_play = sum(l.get('playCount', 0) for l in levels)
+    total_likes = sum(l.get('likes', 0) for l in levels)
+    total_comments = sum(l.get('coments', 0) for l in levels)
+    
+    print(f"\n  📊 统计汇总")
+    print(f"     共 {len(levels)} 个地图")
+    print(f"     总游玩次数: {total_play:,}")
+    print(f"     总点赞数: {total_likes}")
+    print(f"     总评论数: {total_comments}")
+
+except Exception as e:
+    print(f"  ❌ 解析失败: {e}")
+EOF
+    
+    # 清理临时文件
+    rm -f "$TEMP_FILE"
+    rmdir "$TEMP_DIR" 2>/dev/null
+    
+    echo -e "\n${CYAN}════════════════════════════════════════════════════════${NC}"
+    echo -e "\n${CYAN}按回车键返回菜单...${NC}"
+    read input
+}
+
 # ==================== 主程序 ====================
+check_and_install_python
 load_config
 
 while true; do
@@ -1202,6 +1434,9 @@ while true; do
             ;;
         4)
             func_player_info
+            ;;
+        5)
+            func_latest_maps
             ;;
         0)
             echo -e "\n${GREEN}感谢使用派对制造工具箱！${NC}"
