@@ -1,7 +1,7 @@
 #!/system/bin/sh
 
 # ==================== 派对制造工具箱 ====================
-# 版本：4.5 关系图谱可查看ID
+# 版本：4.6 可对指定玩家金矿打工
 
 # ==================== 颜色定义 ====================
 GREEN='\033[0;32m'
@@ -138,7 +138,7 @@ clear_screen() {
 print_header() {
     clear_screen
     echo -e "${CYAN}╔════════════════════════════════════════╗${NC}"
-    echo -e "${CYAN}║      派对制造 Shell 工具箱 v4.5       ║${NC}"
+    echo -e "${CYAN}║      派对制造 Shell 工具箱 v4.6       ║${NC}"
     echo -e "${CYAN}╚════════════════════════════════════════╝${NC}"
     echo ""
 }
@@ -156,6 +156,7 @@ print_menu() {
     echo -e "${GREEN}3. 派对制造排行榜查询${NC}"
     echo -e "${GREEN}4. 派对制造玩家信息查询${NC}"
     echo -e "${GREEN}5. 查询最新地图${NC}"
+    echo -e "${GREEN}6. 金矿打工${NC}"
     echo -e "${RED}0. 退出工具${NC}"
     echo -e "${YELLOW}════════════════════════════════════════${NC}"
     echo ""
@@ -1447,6 +1448,107 @@ EOF
     read input
 }
 
+# ==================== 功能6：金矿打工 ====================
+func_gold_mine() {
+    print_header
+    echo -e "${YELLOW}>>> 金矿打工${NC}\n"
+    
+    echo -e "${BLUE}请输入作者的地图代码（例如：jskru）${NC}"
+    echo -n "地图代码: "
+    read map_code
+    if [ -z "$map_code" ]; then
+        echo -e "${RED}❌ 未输入地图代码${NC}"
+        echo -e "${CYAN}按回车键返回主菜单...${NC}"
+        read input
+        return
+    fi
+
+    # 1. 转换地图代码 -> 十进制ID
+    echo -e "\n${BLUE}[1/4] 转换地图代码...${NC}"
+    map_id=$(echo "$map_code" | python3 -c "import sys; print(int(sys.stdin.read().strip().lower(), 36))" 2>/dev/null)
+    if [ -z "$map_id" ] || [ "$map_id" = "0" ]; then
+        echo -e "${RED}❌ 无效的地图代码${NC}"
+        echo -e "${CYAN}按回车键返回主菜单...${NC}"
+        read input
+        return
+    fi
+    echo -e "${GREEN}✓ 地图ID: $map_id${NC}"
+
+    # 2. 获取 Session
+    echo -e "\n${BLUE}[2/4] 获取会话...${NC}"
+    session=$(get_session)
+    if [ -z "$session" ]; then
+        echo -e "${RED}❌ 获取 Session 失败，请检查网络或配置${NC}"
+        echo -e "${CYAN}按回车键返回主菜单...${NC}"
+        read input
+        return
+    fi
+    echo -e "${GREEN}✓ Session 获取成功${NC}"
+
+    # 3. 查询地图详情，提取作者 userid
+    echo -e "\n${BLUE}[3/4] 查询地图作者...${NC}"
+    map_resp=$(curl -s -X POST "https://battlecraft.tuimotuimo.com/battlecraft/ugclevel/get" \
+      -H "Auth: $session" \
+      -H "ssn: $SSN" \
+      -H "ver: $VER" \
+      -H "Cookie: $COOKIE" \
+      -H "Content-Type: application/x-www-form-urlencoded" \
+      -d "id=$map_id&needMarkList=false")
+
+    # 用 Python 提取 userid
+    friend_id=$(echo "$map_resp" | python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    userid = data.get('data', {}).get('level', {}).get('owner', {}).get('userid', '')
+    if userid:
+        print(userid)
+    else:
+        print('')
+except:
+    print('')
+" 2>/dev/null)
+
+    if [ -z "$friend_id" ]; then
+        echo -e "${RED}❌ 无法获取作者信息，请确认地图代码正确${NC}"
+        echo -e "${CYAN}按回车键返回主菜单...${NC}"
+        read input
+        return
+    fi
+    echo -e "${GREEN}✓ 作者ID: $friend_id${NC}"
+
+    # 4. 发起打工请求
+    echo -e "\n${BLUE}[4/4] 发送打工请求...${NC}"
+    work_resp=$(curl -s -X POST "https://battlecraft.tuimotuimo.com/battlecraft/bank/startwork" \
+      -H "Auth: $session" \
+      -H "ssn: $SSN" \
+      -H "ver: $VER" \
+      -H "Cookie: $COOKIE" \
+      -H "Content-Type: application/x-www-form-urlencoded" \
+      -d "friendId=$friend_id")
+
+    # 打印原始响应
+    echo -e "${CYAN}原始响应：${NC}"
+    echo "$work_resp"
+    echo ""
+
+    # 解析结果
+    code=$(echo "$work_resp" | python3 -c "import sys, json; print(json.load(sys.stdin).get('code', -1))" 2>/dev/null)
+    if [ "$code" = "0" ]; then
+        nick=$(echo "$work_resp" | python3 -c "import sys, json; d=json.load(sys.stdin); print(d.get('data',{}).get('receiver',{}).get('nickName',''))" 2>/dev/null)
+        echo -e "${GREEN}════════════════════════════════════════${NC}"
+        echo -e "${GREEN}✅ 打工成功！${NC}"
+        echo -e "   你正在为 ${CYAN}$nick${NC} 的金矿工作"
+        echo -e "${GREEN}════════════════════════════════════════${NC}"
+    else
+        msg=$(echo "$work_resp" | python3 -c "import sys, json; print(json.load(sys.stdin).get('msg', '未知错误'))" 2>/dev/null)
+        echo -e "${RED}❌ 打工失败：$msg${NC}"
+    fi
+
+    echo -e "\n${CYAN}按回车键返回主菜单...${NC}"
+    read input
+}
+
 # ==================== 主程序 ====================
 check_and_install_python
 load_config
@@ -1489,6 +1591,9 @@ while true; do
             ;;
         5)
             func_latest_maps
+            ;;
+        6)
+            func_gold_mine
             ;;
         0)
             echo -e "\n${GREEN}感谢使用派对制造工具箱！${NC}"
