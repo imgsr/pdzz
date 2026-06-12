@@ -1,7 +1,7 @@
 #!/system/bin/sh
 
 # ==================== 派对制造工具箱 ====================
-# 版本：4.4 整合最新地图查询功能
+# 版本：4.5 关系图谱可查看ID
 
 # ==================== 颜色定义 ====================
 GREEN='\033[0;32m'
@@ -15,6 +15,7 @@ NC='\033[0m'
 check_and_install_python() {
     if command -v python3 >/dev/null 2>&1; then
         echo -e "${GREEN}✅ Python3 已安装${NC}"
+        termux-wake-lock
         sleep 1
         return 0
     elif command -v python >/dev/null 2>&1; then
@@ -27,6 +28,7 @@ check_and_install_python() {
     
     if [ -d "/data/data/com.termux" ] || command -v pkg >/dev/null 2>&1; then
         echo -e "${BLUE}检测到 Termux 环境，使用 pkg 安装 Python...${NC}"
+        termux-wake-lock
         pkg update -y 2>/dev/null
         pkg install python -y
     elif command -v apt >/dev/null 2>&1; then
@@ -136,7 +138,7 @@ clear_screen() {
 print_header() {
     clear_screen
     echo -e "${CYAN}╔════════════════════════════════════════╗${NC}"
-    echo -e "${CYAN}║      派对制造 Shell 工具箱 v4.4       ║${NC}"
+    echo -e "${CYAN}║      派对制造 Shell 工具箱 v4.5       ║${NC}"
     echo -e "${CYAN}╚════════════════════════════════════════╝${NC}"
     echo ""
 }
@@ -147,6 +149,8 @@ print_menu() {
     echo -e "${GREEN}B. 设备ID设置${NC}"
     echo -e "${GREEN}C. 查询游戏版本信息${NC}"
     echo -e "${GREEN}D. 查询游戏公告${NC}"
+    echo -e "${GREEN}E. 查看工具箱公告${NC}"
+    echo -e "${GREEN}F. 查看工具箱版本${NC}"
     echo -e "${GREEN}1. 派对制造房间列表${NC}"
     echo -e "${GREEN}2. 派对制造地图查询${NC}"
     echo -e "${GREEN}3. 派对制造排行榜查询${NC}"
@@ -386,6 +390,48 @@ try:
 except Exception as e:
     print(f\"  解析失败: {e}\")
 "
+    
+    echo -e "\n${CYAN}按回车键返回主菜单...${NC}"
+    read input
+}
+
+# ==================== 功能E：查看G在线公告 ====================
+func_github_notice() {
+    print_header
+    echo -e "${YELLOW}>>> 查看在线公告${NC}\n"
+    
+    echo -e "${BLUE}正在获取公告内容...${NC}"
+    NOTICE_CONTENT=$(curl -s --max-time 10 "https://ghproxy.net/https://raw.githubusercontent.com/imgsr/pdzz/main/context.txt" 2>/dev/null)
+    
+    if [ -z "$NOTICE_CONTENT" ]; then
+        echo -e "${RED}❌ 获取公告失败，请检查网络连接${NC}"
+    else
+        echo -e "${GREEN}✅ 获取成功${NC}\n"
+        echo -e "${CYAN}════════════════ 公告内容 ════════════════${NC}"
+        echo "$NOTICE_CONTENT"
+        echo -e "${CYAN}════════════════════════════════════════${NC}"
+    fi
+    
+    echo -e "\n${CYAN}按回车键返回主菜单...${NC}"
+    read input
+}
+
+# ==================== 功能F：查看工具箱版本信息 ====================
+func_toolbox_version() {
+    print_header
+    echo -e "${YELLOW}>>> 查看工具箱版本${NC}\n"
+    
+    echo -e "${BLUE}正在获取版本信息...${NC}"
+    VERSION_CONTENT=$(curl -s --max-time 10 "https://ghproxy.net/https://raw.githubusercontent.com/imgsr/pdzz/main/version.txt" 2>/dev/null)
+    
+    if [ -z "$VERSION_CONTENT" ]; then
+        echo -e "${RED}❌ 获取版本信息失败，请检查网络连接${NC}"
+    else
+        echo -e "${GREEN}✅ 获取成功${NC}\n"
+        echo -e "${CYAN}════════════════ 版本信息 ════════════════${NC}"
+        echo "$VERSION_CONTENT"
+        echo -e "${CYAN}════════════════════════════════════════${NC}"
+    fi
     
     echo -e "\n${CYAN}按回车键返回主菜单...${NC}"
     read input
@@ -1422,6 +1468,12 @@ while true; do
             ;;
         D|d)
             func_game_notice
+            ;;
+        E|e)
+            func_github_notice
+            ;;
+        F|f)
+            func_toolbox_version
             ;;
         1)
             func_room_list
