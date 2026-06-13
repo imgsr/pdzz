@@ -1,7 +1,7 @@
 #!/system/bin/sh
 
 # ==================== 派对制造工具箱 ====================
-# 版本：4.8
+# 版本：4.8.1
 
 # ==================== 颜色定义 ====================
 GREEN='\033[0;32m'
@@ -11,11 +11,32 @@ RED='\033[0;31m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
+# ==================== 配置文件路径（跨平台兼容） ====================
+# 自动选择合适的位置保存配置
+if [ -d "/storage/emulated/0" ] && [ -w "/storage/emulated/0" ]; then
+    # Android Termux 环境 - 使用共享存储
+    CONFIG_DIR="/storage/emulated/0/party_tool"
+    CONFIG_FILE="$CONFIG_DIR/config.txt"
+elif [ -n "$HOME" ] && [ -w "$HOME" ]; then
+    # 普通 Linux 环境 - 使用用户主目录
+    CONFIG_DIR="$HOME/.party_tool"
+    CONFIG_FILE="$CONFIG_DIR/config.txt"
+else
+    # 兜底：当前脚本所在目录
+    CONFIG_DIR="$(cd "$(dirname "$0")" && pwd)/.party_tool"
+    CONFIG_FILE="$CONFIG_DIR/config.txt"
+fi
+
+# 确保配置目录存在（只在目录不存在时创建）
+if [ ! -d "$CONFIG_DIR" ]; then
+    mkdir -p "$CONFIG_DIR" 2>/dev/null
+fi
+
 # ==================== 检查并安装 Python ====================
 check_and_install_python() {
     if command -v python3 >/dev/null 2>&1; then
         echo -e "${GREEN}✅ Python3 已安装${NC}"
-        termux-wake-lock
+        termux-wake-lock 2>/dev/null
         sleep 1
         return 0
     elif command -v python >/dev/null 2>&1; then
@@ -28,7 +49,7 @@ check_and_install_python() {
     
     if [ -d "/data/data/com.termux" ] || command -v pkg >/dev/null 2>&1; then
         echo -e "${BLUE}检测到 Termux 环境，使用 pkg 安装 Python...${NC}"
-        termux-wake-lock
+        termux-wake-lock 2>/dev/null
         pkg update -y 2>/dev/null
         pkg install python -y
     elif command -v apt >/dev/null 2>&1; then
@@ -61,9 +82,6 @@ check_and_install_python() {
     fi
 }
 
-# ==================== 配置文件路径 ====================
-CONFIG_FILE="/data/local/tmp/party_tool_config.txt"
-
 # ==================== 默认配置 ====================
 DEFAULT_JWT="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkZXZJZCI6IjMzOWY3YWJhZTg2OGI3ZjBhODMzODc3YjBkNWQ0NjQ1XG5kYTNkYzlhOTk5Mjg5OGY5MDk2YWI5MjAyOTVkM2ZhZSIsImZsYWciOiJiZGY2IiwiZnJvbSI6InRhcHRhcCIsImx0IjoiZ3Vlc3QiLCJzc24iOiI1Mjk5IiwidXNlcmlkIjoiNjlmNTk5MDNlOGQ1YjU1YmI0ZWViYjAyIiwidiI6IjAifQ.RHQ1EK0pEwiXBTILUyLNgHCetsfO57fUmJtcMGPqG-A"
 DEFAULT_DEVICE_ID="339f7abae868b7f0a833877b0d5d46454a3dc9a9992898f9096ab920295d3fae"
@@ -89,7 +107,19 @@ generate_random_device_id() {
 # ==================== 配置加载/保存 ====================
 load_config() {
     if [ -f "$CONFIG_FILE" ]; then
-        source "$CONFIG_FILE" 2>/dev/null
+        # 使用 sed 去除引号后加载
+        while IFS='=' read -r key value; do
+            # 去除值两端的引号和空格
+            value=$(echo "$value" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e 's/^"//' -e 's/"$//')
+            case "$key" in
+                JWT) JWT="$value" ;;
+                DEVICE_ID) DEVICE_ID="$value" ;;
+                SSN) SSN="$value" ;;
+                VER) VER="$value" ;;
+                COOKIE) COOKIE="$value" ;;
+                SAVED_MAP_COUNT) MAP_COUNT="$value" ;;
+            esac
+        done < "$CONFIG_FILE" 2>/dev/null
     fi
     
     JWT=${JWT:-$DEFAULT_JWT}
@@ -103,13 +133,19 @@ load_config() {
 }
 
 save_config() {
+    # 确保目录存在
+    if [ ! -d "$CONFIG_DIR" ]; then
+        mkdir -p "$CONFIG_DIR" 2>/dev/null
+    fi
+    
+    # 写入配置（不添加额外引号）
     cat > "$CONFIG_FILE" << EOF
-JWT="$JWT"
-DEVICE_ID="$DEVICE_ID"
-SSN="$SSN"
-VER="$VER"
-COOKIE="$COOKIE"
-SAVED_MAP_COUNT="$MAP_COUNT"
+JWT=$JWT
+DEVICE_ID=$DEVICE_ID
+SSN=$SSN
+VER=$VER
+COOKIE=$COOKIE
+SAVED_MAP_COUNT=$MAP_COUNT
 EOF
 }
 
@@ -408,7 +444,7 @@ except Exception as e:
     read input
 }
 
-# ==================== 功能E：查看G在线公告 ====================
+# ==================== 功能E：查看在线公告 ====================
 func_github_notice() {
     print_header
     echo -e "${YELLOW}>>> 查看在线公告${NC}\n"
@@ -561,7 +597,7 @@ EOF
 # ==================== 功能2：地图查询（增强版） ====================
 func_map_query() {
     print_header
-    echo -e "${YELLOW}>>> 派对制造地图查询（增强版）${NC}\n"
+    echo -e "${YELLOW}>>> 派对制造地图查询${NC}\n"
 
     JWT="$JWT"
     DEVICE_ID="$DEVICE_ID"
@@ -1233,7 +1269,7 @@ EOF
     read input
 }
 
-# ==================== 功能5：最新地图查询（新增） ====================
+# ==================== 功能5：最新地图查询 ====================
 func_latest_maps() {
     while true; do
         print_header
@@ -1349,10 +1385,8 @@ except:
     
     echo -e "${BLUE}[3/3] 获取地图详情...${NC}"
     
-    # 使用/storage/emulated/0/目录，确保可访问
-    TEMP_DIR="/storage/emulated/0/party_tool_temp"
-    mkdir -p "$TEMP_DIR" 2>/dev/null
-    TEMP_FILE="$TEMP_DIR/latest_maps_temp.json"
+    # 使用配置目录存放临时文件
+    TEMP_FILE="$CONFIG_DIR/latest_maps_temp.json"
     
     curl -s -X POST "https://battlecraft.tuimotuimo.com/battlecraft/ugclevel/getlist" \
       -H "Cookie: $COOKIE" \
@@ -1453,7 +1487,6 @@ EOF
     
     # 清理临时文件
     rm -f "$TEMP_FILE"
-    rmdir "$TEMP_DIR" 2>/dev/null
     
     echo -e "\n${CYAN}════════════════════════════════════════════════════════${NC}"
     echo -e "\n${CYAN}按回车键返回菜单...${NC}"
@@ -1465,7 +1498,7 @@ func_gold_mine() {
     print_header
     echo -e "${YELLOW}>>> 金矿打工${NC}\n"
     
-    echo -e "${BLUE}请输入作者的地图代码（例如：jskru）${NC}"
+    echo -e "${BLUE}请输入目标玩家的地图代码（例如：jskru）${NC}"
     echo -n "地图代码: "
     read map_code
     if [ -z "$map_code" ]; then
@@ -1570,7 +1603,7 @@ func_map_comment() {
     local map_code=""
     local map_id=""
     while true; do
-        echo -e "${BLUE}请输入地图36进制代码（例如：abc123），输入 q 退出:${NC}"
+        echo -e "${BLUE}请输入地图代码（例如：jskru），输入 q 退出:${NC}"
         read -r map_code
         if [ "$map_code" = "q" ] || [ "$map_code" = "Q" ]; then
             echo -e "${CYAN}已取消${NC}"
@@ -1751,7 +1784,7 @@ func_broadcast_map() {
     echo -e "${YELLOW}>>> 广播地图工具${NC}\n"
 
     # 输入地图代码
-    echo -e "${BLUE}请输入地图36进制代码（例如：jskru）:${NC}"
+    echo -e "${BLUE}请输入地图代码（例如：jskru）:${NC}"
     read -r map_code
     if [ -z "$map_code" ]; then
         echo -e "${RED}❌ 未输入地图代码${NC}"
@@ -1815,7 +1848,7 @@ func_broadcast_map() {
     if [ "$bcode" = "0" ]; then
         echo -e "${GREEN}═══════════════════════════════════════${NC}"
         echo -e "${GREEN}✅ 广播成功！${NC}"
-        echo -e "${CYAN}地图 $map_code 已发送到世界频道${NC}"
+        echo -e "${CYAN}地图 $map_code 已发送到首页${NC}"
         echo -e "${GREEN}═══════════════════════════════════════${NC}"
     elif [ "$bcode" = "2014" ]; then
         echo -e "${RED}❌ 广播失败，请求错误c2014${NC}"
