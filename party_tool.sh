@@ -1,7 +1,7 @@
 #!/system/bin/sh
 
 # ==================== 派对制造工具箱 ====================
-# 版本：4.6 可对指定玩家金矿打工
+# 版本：4.8
 
 # ==================== 颜色定义 ====================
 GREEN='\033[0;32m'
@@ -130,6 +130,16 @@ get_session() {
     echo "$session"
 }
 
+# ==================== 36进制转10进制 ====================
+base36_to_dec() {
+    local input="$1"
+    if [ -z "$input" ]; then
+        echo ""
+        return
+    fi
+    python3 -c "import sys; print(int(sys.stdin.read().strip().lower(), 36))" <<< "$input" 2>/dev/null
+}
+
 # ==================== 工具函数 ====================
 clear_screen() {
     printf "\033[2J\033[H"
@@ -138,7 +148,7 @@ clear_screen() {
 print_header() {
     clear_screen
     echo -e "${CYAN}╔════════════════════════════════════════╗${NC}"
-    echo -e "${CYAN}║      派对制造 Shell 工具箱 v4.6       ║${NC}"
+    echo -e "${CYAN}║      派对制造 Shell 工具箱 v4.8       ║${NC}"
     echo -e "${CYAN}╚════════════════════════════════════════╝${NC}"
     echo ""
 }
@@ -155,8 +165,10 @@ print_menu() {
     echo -e "${GREEN}2. 派对制造地图查询${NC}"
     echo -e "${GREEN}3. 派对制造排行榜查询${NC}"
     echo -e "${GREEN}4. 派对制造玩家信息查询${NC}"
-    echo -e "${GREEN}5. 查询最新地图${NC}"
-    echo -e "${GREEN}6. 金矿打工${NC}"
+    echo -e "${GREEN}5. 派对制造查询最新地图${NC}"
+    echo -e "${GREEN}6. 派对制造金矿打工${NC}"
+    echo -e "${GREEN}7. 派对制造评论地图${NC}"
+    echo -e "${GREEN}8. 派对制造广播地图${NC}"
     echo -e "${RED}0. 退出工具${NC}"
     echo -e "${YELLOW}════════════════════════════════════════${NC}"
     echo ""
@@ -1549,6 +1561,273 @@ except:
     read input
 }
 
+# ==================== 功能7：地图评论工具（支持stamp） ====================
+func_map_comment() {
+    print_header
+    echo -e "${YELLOW}>>> 地图评论工具（支持stamp）${NC}\n"
+
+    # 输入地图代码
+    local map_code=""
+    local map_id=""
+    while true; do
+        echo -e "${BLUE}请输入地图36进制代码（例如：abc123），输入 q 退出:${NC}"
+        read -r map_code
+        if [ "$map_code" = "q" ] || [ "$map_code" = "Q" ]; then
+            echo -e "${CYAN}已取消${NC}"
+            echo -e "${CYAN}按回车键返回主菜单...${NC}"
+            read input
+            return
+        fi
+        if [ -z "$map_code" ]; then
+            echo -e "${RED}❌ 地图代码不能为空，请重新输入${NC}"
+            continue
+        fi
+        map_id=$(base36_to_dec "$map_code")
+        if [ -z "$map_id" ] || [ "$map_id" = "0" ]; then
+            echo -e "${RED}❌ 无效的地图代码，请重新输入${NC}"
+            continue
+        fi
+        echo -e "${GREEN}✓ 地图ID: $map_id${NC}"
+        break
+    done
+
+    # 获取一次 Session
+    echo -e "\n${BLUE}获取会话...${NC}"
+    session=$(get_session)
+    if [ -z "$session" ]; then
+        echo -e "${RED}❌ 获取Session失败，请检查网络或配置${NC}"
+        echo -e "${CYAN}按回车键返回主菜单...${NC}"
+        read input
+        return
+    fi
+    echo -e "${GREEN}✓ Session获取成功${NC}"
+
+    # 评论类型选择
+    echo -e "\n${YELLOW}请选择评论类型:${NC}"
+    echo "  1. 使用预设表情/短语 (stamp)"
+    echo "  2. 自定义文本 (text)"
+    read -p "请输入 [1/2]: " type_choice
+
+    local comment_type=""
+    local stamp_content=""
+    case $type_choice in
+        1)
+            comment_type="stamp"
+            echo -e "\n${YELLOW}请选择stamp内容:${NC}"
+            echo "  1. 随机选择 (0001-0004)"
+            echo "  2. 0001"
+            echo "  3. 0002"
+            echo "  4. 0003"
+            echo "  5. 0004"
+            read -p "请输入 [1-5]: " stamp_choice
+            case $stamp_choice in
+                1) rand_num=$((RANDOM % 4 + 1)); stamp_content=$(printf "%04d" $rand_num) ;;
+                2) stamp_content="0001" ;;
+                3) stamp_content="0002" ;;
+                4) stamp_content="0003" ;;
+                5) stamp_content="0004" ;;
+                *) echo -e "${RED}无效，使用随机"; rand_num=$((RANDOM % 4 + 1)); stamp_content=$(printf "%04d" $rand_num) ;;
+            esac
+            echo -e "${GREEN}✓ 将发送 stamp: $stamp_content${NC}"
+            ;;
+        2)
+            comment_type="text"
+            ;;
+        *)
+            echo -e "${RED}❌ 无效选择，返回${NC}"
+            echo -e "${CYAN}按回车键返回主菜单...${NC}"
+            read input
+            return
+            ;;
+    esac
+
+    # 是否点赞
+    echo -e "\n${YELLOW}是否顺便点赞该地图？ [y/n] (默认 y):${NC}"
+    read -r like_choice
+    local like_flag="true"
+    if [[ "$like_choice" == "n" || "$like_choice" == "N" ]]; then
+        like_flag="false"
+        echo -e "${BLUE}将不点赞${NC}"
+    else
+        echo -e "${BLUE}将同时点赞${NC}"
+    fi
+
+    # 评论内容循环
+    local final_content=""
+    local need_retry=1
+    while [ $need_retry -eq 1 ]; do
+        need_retry=0
+
+        if [ "$comment_type" = "stamp" ]; then
+            final_content="$stamp_content"
+        else
+            echo -e "\n${YELLOW}请输入评论内容（不超过20字）:${NC}"
+            read -r text_content
+            if [ -z "$text_content" ]; then
+                echo -e "${RED}❌ 评论内容不能为空，请重新输入${NC}"
+                need_retry=1
+                continue
+            fi
+            char_len=$(python3 -c "import sys; print(len(sys.stdin.read()))" <<< "$text_content")
+            if [ "$char_len" -gt 20 ]; then
+                echo -e "${RED}❌ 评论内容超过20字（当前${char_len}字），请重新输入${NC}"
+                need_retry=1
+                continue
+            fi
+            final_content="$text_content"
+            echo -e "${GREEN}✓ 评论内容长度: ${char_len}/20${NC}"
+        fi
+
+        # 发送评论
+        echo -e "\n${BLUE}发送评论...${NC}"
+        
+        # send_comment 函数内嵌
+        comment_resp=$(curl -s -X POST "https://battlecraft.tuimotuimo.com/battlecraft/ugclevel/addcomment" \
+          -H "Auth: $session" \
+          -H "ssn: $SSN" \
+          -H "ver: $VER" \
+          -H "Cookie: $COOKIE" \
+          -H "Content-Type: application/x-www-form-urlencoded" \
+          --data-urlencode "id=$map_id" \
+          --data-urlencode "type=$comment_type" \
+          --data-urlencode "content=$final_content" \
+          --data-urlencode "like=$like_flag" 2>/dev/null)
+        
+        # 解析返回码
+        code=$(echo "$comment_resp" | python3 -c "import sys, json; print(json.load(sys.stdin).get('code', -1))" 2>/dev/null)
+        msg=$(echo "$comment_resp" | python3 -c "import sys, json; print(json.load(sys.stdin).get('msg', '未知错误'))" 2>/dev/null)
+
+        echo -e "\n${GREEN}═══════════════════════════════════════${NC}"
+        case "$code" in
+            0)
+                echo -e "${GREEN}✅ 评论成功！${NC}"
+                echo -e "${CYAN}地图 $map_code 的评论已发布${NC}"
+                comment_id=$(echo "$comment_resp" | python3 -c "import sys, json; print(json.load(sys.stdin).get('data', {}).get('comment', {}).get('id', ''))" 2>/dev/null)
+                if [ -n "$comment_id" ]; then
+                    echo -e "${CYAN}评论ID: $comment_id${NC}"
+                fi
+                echo -e "${GREEN}═══════════════════════════════════════${NC}"
+                break
+                ;;
+            1105)
+                echo -e "${RED}❌ 评论失败：您已评论过该地图${NC}"
+                echo -e "${YELLOW}每张地图只能评论一次，无法继续${NC}"
+                echo -e "${GREEN}═══════════════════════════════════════${NC}"
+                break
+                ;;
+            1103)
+                echo -e "${RED}❌ 评论失败：包含违规词${NC}"
+                echo -e "${YELLOW}请修改评论内容后重试${NC}"
+                need_retry=1
+                ;;
+            1001)
+                echo -e "${RED}❌ 评论失败：参数无效${NC}"
+                echo -e "${YELLOW}可能原因：评论内容超长或包含非法字符${NC}"
+                need_retry=1
+                ;;
+            *)
+                echo -e "${RED}❌ 评论失败 (code: $code)${NC}"
+                echo -e "${YELLOW}错误信息: $msg${NC}"
+                echo -e "${YELLOW}是否重试？[y/n] (默认 n)${NC}"
+                read -r retry_choice
+                if [[ "$retry_choice" == "y" || "$retry_choice" == "Y" ]]; then
+                    need_retry=1
+                else
+                    echo -e "${RED}已放弃重试${NC}"
+                    break
+                fi
+                ;;
+        esac
+        echo -e "${GREEN}═══════════════════════════════════════${NC}"
+    done
+
+    echo -e "\n${CYAN}按回车键返回主菜单...${NC}"
+    read input
+}
+
+# ==================== 功能8：广播地图工具 ====================
+func_broadcast_map() {
+    print_header
+    echo -e "${YELLOW}>>> 广播地图工具${NC}\n"
+
+    # 输入地图代码
+    echo -e "${BLUE}请输入地图36进制代码（例如：jskru）:${NC}"
+    read -r map_code
+    if [ -z "$map_code" ]; then
+        echo -e "${RED}❌ 未输入地图代码${NC}"
+        echo -e "${CYAN}按回车键返回主菜单...${NC}"
+        read input
+        return
+    fi
+
+    # 转换地图ID
+    echo -e "\n${BLUE}[1/4] 转换地图代码...${NC}"
+    map_id=$(base36_to_dec "$map_code")
+    if [ -z "$map_id" ] || [ "$map_id" = "0" ]; then
+        echo -e "${RED}❌ 无效的地图代码${NC}"
+        echo -e "${CYAN}按回车键返回主菜单...${NC}"
+        read input
+        return
+    fi
+    echo -e "${GREEN}✓ 地图ID: $map_id${NC}"
+
+    # 获取Session
+    echo -e "\n${BLUE}[2/4] 获取会话...${NC}"
+    session=$(get_session)
+    if [ -z "$session" ]; then
+        echo -e "${RED}❌ 获取Session失败，请检查网络或配置${NC}"
+        echo -e "${CYAN}按回车键返回主菜单...${NC}"
+        read input
+        return
+    fi
+    echo -e "${GREEN}✓ Session获取成功${NC}"
+
+    # 领取免费喇叭
+    echo -e "\n${BLUE}[3/4] 领取免费喇叭...${NC}"
+    claim_resp=$(curl -s -X POST "https://battlecraft.tuimotuimo.com/battlecraft/horn/claimfree" \
+      -H "Auth: $session" \
+      -H "ssn: $SSN" \
+      -H "ver: $VER" \
+      -H "Cookie: $COOKIE" \
+      -H "Content-Type: application/x-www-form-urlencoded" \
+      -d "claimsCount=1&all=false" 2>/dev/null)
+    
+    code=$(echo "$claim_resp" | python3 -c "import sys, json; print(json.load(sys.stdin).get('code', -1))" 2>/dev/null)
+    if [ "$code" = "0" ]; then
+        horn_count=$(echo "$claim_resp" | python3 -c "import sys, json; print(json.load(sys.stdin).get('data', {}).get('userrole', {}).get('horn', 0))" 2>/dev/null)
+        echo -e "${GREEN}✓ 领取成功，当前喇叭数量: $horn_count${NC}"
+    else
+        msg=$(echo "$claim_resp" | python3 -c "import sys, json; print(json.load(sys.stdin).get('msg', '未知错误'))" 2>/dev/null)
+        echo -e "${YELLOW}⚠️ 领取失败: $msg (可能今日已领取过)${NC}"
+    fi
+
+    # 广播地图
+    echo -e "\n${BLUE}[4/4] 发送广播...${NC}"
+    broadcast_resp=$(curl -s -X POST "https://battlecraft.tuimotuimo.com/battlecraft/chatroom/sendugclevel" \
+      -H "Auth: $session" \
+      -H "ssn: $SSN" \
+      -H "ver: $VER" \
+      -H "Cookie: $COOKIE" \
+      -H "Content-Type: application/x-www-form-urlencoded" \
+      -d "ugcLvId=$map_id&v2=true" 2>/dev/null)
+    
+    bcode=$(echo "$broadcast_resp" | python3 -c "import sys, json; print(json.load(sys.stdin).get('code', -1))" 2>/dev/null)
+    if [ "$bcode" = "0" ]; then
+        echo -e "${GREEN}═══════════════════════════════════════${NC}"
+        echo -e "${GREEN}✅ 广播成功！${NC}"
+        echo -e "${CYAN}地图 $map_code 已发送到世界频道${NC}"
+        echo -e "${GREEN}═══════════════════════════════════════${NC}"
+    elif [ "$bcode" = "2014" ]; then
+        echo -e "${RED}❌ 广播失败，请求错误c2014${NC}"
+    else
+        msg=$(echo "$broadcast_resp" | python3 -c "import sys, json; print(json.load(sys.stdin).get('msg', '未知错误'))" 2>/dev/null)
+        echo -e "${RED}❌ 广播失败: $msg${NC}"
+    fi
+
+    echo -e "\n${CYAN}按回车键返回主菜单...${NC}"
+    read input
+}
+
 # ==================== 主程序 ====================
 check_and_install_python
 load_config
@@ -1594,6 +1873,12 @@ while true; do
             ;;
         6)
             func_gold_mine
+            ;;
+        7)
+            func_map_comment
+            ;;
+        8)
+            func_broadcast_map
             ;;
         0)
             echo -e "\n${GREEN}感谢使用派对制造工具箱！${NC}"
