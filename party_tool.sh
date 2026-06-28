@@ -1,7 +1,7 @@
 #!/system/bin/sh
 
 # ==================== 派对制造工具箱 ====================
-# 版本：4.8.1
+# 版本：5.0 - 集成关系图谱生成
 
 # ==================== 颜色定义 ====================
 GREEN='\033[0;32m'
@@ -11,23 +11,23 @@ RED='\033[0;31m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
+# ==================== Termux 保持唤醒 ====================
+if [ -d "/data/data/com.termux" ] || command -v pkg >/dev/null 2>&1; then
+    termux-wake-lock 2>/dev/null
+fi
+
 # ==================== 配置文件路径（跨平台兼容） ====================
-# 自动选择合适的位置保存配置
 if [ -d "/storage/emulated/0" ] && [ -w "/storage/emulated/0" ]; then
-    # Android Termux 环境 - 使用共享存储
     CONFIG_DIR="/storage/emulated/0/party_tool"
     CONFIG_FILE="$CONFIG_DIR/config.txt"
 elif [ -n "$HOME" ] && [ -w "$HOME" ]; then
-    # 普通 Linux 环境 - 使用用户主目录
     CONFIG_DIR="$HOME/.party_tool"
     CONFIG_FILE="$CONFIG_DIR/config.txt"
 else
-    # 兜底：当前脚本所在目录
     CONFIG_DIR="$(cd "$(dirname "$0")" && pwd)/.party_tool"
     CONFIG_FILE="$CONFIG_DIR/config.txt"
 fi
 
-# 确保配置目录存在（只在目录不存在时创建）
 if [ ! -d "$CONFIG_DIR" ]; then
     mkdir -p "$CONFIG_DIR" 2>/dev/null
 fi
@@ -36,12 +36,11 @@ fi
 check_and_install_python() {
     if command -v python3 >/dev/null 2>&1; then
         echo -e "${GREEN}✅ Python3 已安装${NC}"
-        termux-wake-lock 2>/dev/null
-        sleep 1
+        sleep 0.3
         return 0
     elif command -v python >/dev/null 2>&1; then
         echo -e "${GREEN}✅ Python 已安装${NC}"
-        sleep 1
+        sleep 0.3
         return 0
     fi
     
@@ -49,7 +48,6 @@ check_and_install_python() {
     
     if [ -d "/data/data/com.termux" ] || command -v pkg >/dev/null 2>&1; then
         echo -e "${BLUE}检测到 Termux 环境，使用 pkg 安装 Python...${NC}"
-        termux-wake-lock 2>/dev/null
         pkg update -y 2>/dev/null
         pkg install python -y
     elif command -v apt >/dev/null 2>&1; then
@@ -70,11 +68,11 @@ check_and_install_python() {
     
     if command -v python3 >/dev/null 2>&1; then
         echo -e "${GREEN}✅ Python3 安装成功！${NC}"
-        sleep 1
+        sleep 0.3
         return 0
     elif command -v python >/dev/null 2>&1; then
         echo -e "${GREEN}✅ Python 安装成功！${NC}"
-        sleep 1
+        sleep 0.3
         return 0
     else
         echo -e "${RED}❌ Python 安装失败，请手动安装${NC}"
@@ -89,7 +87,6 @@ DEFAULT_SSN="3c05"
 DEFAULT_VER="2.1.93"
 DEFAULT_COOKIE="SERVERID=769e7e1294f37fd70e4a8fd5d4a4a403|1774672107|1774600237"
 
-# 最新地图查询默认数量
 MAP_COUNT=100
 
 # ==================== 随机生成Device ID ====================
@@ -107,9 +104,7 @@ generate_random_device_id() {
 # ==================== 配置加载/保存 ====================
 load_config() {
     if [ -f "$CONFIG_FILE" ]; then
-        # 使用 sed 去除引号后加载
         while IFS='=' read -r key value; do
-            # 去除值两端的引号和空格
             value=$(echo "$value" | sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' -e 's/^"//' -e 's/"$//')
             case "$key" in
                 JWT) JWT="$value" ;;
@@ -133,12 +128,10 @@ load_config() {
 }
 
 save_config() {
-    # 确保目录存在
     if [ ! -d "$CONFIG_DIR" ]; then
         mkdir -p "$CONFIG_DIR" 2>/dev/null
     fi
     
-    # 写入配置（不添加额外引号）
     cat > "$CONFIG_FILE" << EOF
 JWT=$JWT
 DEVICE_ID=$DEVICE_ID
@@ -184,7 +177,7 @@ clear_screen() {
 print_header() {
     clear_screen
     echo -e "${CYAN}╔════════════════════════════════════════╗${NC}"
-    echo -e "${CYAN}║      派对制造 Shell 工具箱 v4.8       ║${NC}"
+    echo -e "${CYAN}║      派对制造 Shell 工具箱 v5.0     ║${NC}"
     echo -e "${CYAN}╚════════════════════════════════════════╝${NC}"
     echo ""
 }
@@ -200,7 +193,7 @@ print_menu() {
     echo -e "${GREEN}1. 派对制造房间列表${NC}"
     echo -e "${GREEN}2. 派对制造地图查询${NC}"
     echo -e "${GREEN}3. 派对制造排行榜查询${NC}"
-    echo -e "${GREEN}4. 派对制造玩家信息查询${NC}"
+    echo -e "${GREEN}4. 派对制造玩家信息查询 + 关系图谱生成${NC}"
     echo -e "${GREEN}5. 派对制造查询最新地图${NC}"
     echo -e "${GREEN}6. 派对制造金矿打工${NC}"
     echo -e "${GREEN}7. 派对制造评论地图${NC}"
@@ -274,7 +267,7 @@ func_device_setup() {
                 SSN="$DEFAULT_SSN"
                 COOKIE="$DEFAULT_COOKIE"
                 echo -e "${GREEN}✅ 已重置为默认配置（Device ID已随机生成）${NC}"
-                sleep 1
+                sleep 0.3
                 ;;
             2)
                 echo -e "${YELLOW}请输入JWT（以eyJ开头）：${NC}"
@@ -283,7 +276,7 @@ func_device_setup() {
                     JWT="$new_jwt"
                     echo -e "${GREEN}✅ JWT已设置${NC}"
                 fi
-                sleep 1
+                sleep 0.3
                 ;;
             3)
                 echo -e "${YELLOW}请输入Device ID：${NC}"
@@ -292,7 +285,7 @@ func_device_setup() {
                     DEVICE_ID="$new_device"
                     echo -e "${GREEN}✅ Device ID已设置${NC}"
                 fi
-                sleep 1
+                sleep 0.3
                 ;;
             4)
                 echo -e "${YELLOW}请输入SSN：${NC}"
@@ -301,19 +294,19 @@ func_device_setup() {
                     SSN="$new_ssn"
                     echo -e "${GREEN}✅ SSN已设置${NC}"
                 fi
-                sleep 1
+                sleep 0.3
                 ;;
             5)
                 save_config
                 echo -e "${GREEN}✅ 配置已保存到 $CONFIG_FILE${NC}"
-                sleep 1
+                sleep 0.3
                 ;;
             0)
                 return
                 ;;
             *)
                 echo -e "${RED}无效选项${NC}"
-                sleep 1
+                sleep 0.3
                 ;;
         esac
     done
@@ -742,15 +735,13 @@ else:
 ratings = lev.get('ratings', 0)
 rating_desc = ""
 if 1 <= ratings <= 2:
-    rating_desc = "精选 ⭐⭐"
+    rating_desc = "精选"
 elif 3 <= ratings <= 4:
-    rating_desc = "推荐 ⭐⭐⭐"
-elif ratings >= 5:
-    rating_desc = "强烈推荐 ⭐⭐⭐⭐⭐"
+    rating_desc = "推荐"
+elif ratings == 5:
+    rating_desc = "强烈推荐"
 else:
     rating_desc = "无评级"
-
-star_tag = lev.get('starTag', 0)
 
 print(f"\n🎮 【游玩数据】")
 print(f"  游玩次数：{play_count}")
@@ -760,7 +751,6 @@ print(f"  点赞数：{lev.get('likes', 0)}")
 print(f"  点踩数：{lev.get('dislike', 0)}")
 print(f"  举报数：{lev.get('reports', 0)}")
 print(f"  评分：{rating_desc} (ratings={ratings})")
-print(f"  需领取星星数：{star_tag}")
 print(f"  最佳单人分数：{lev.get('bestScore', 0)}")
 
 # ==================== 模式属性 ====================
@@ -962,7 +952,7 @@ func_rank_query() {
                 ;;
             *)
                 echo -e "${RED}无效选项${NC}"
-                sleep 1
+                sleep 0.3
                 continue
                 ;;
         esac
@@ -1047,10 +1037,10 @@ except Exception as e:
     done
 }
 
-# ==================== 功能4：玩家信息查询（通过地图代码） ====================
+# ==================== 功能4：玩家信息查询 + 关系图谱生成 ====================
 func_player_info() {
     print_header
-    echo -e "${YELLOW}>>> 派对制造玩家信息查询${NC}\n"
+    echo -e "${YELLOW}>>> 派对制造玩家信息查询 + 关系图谱生成${NC}\n"
     
     echo -e "${BLUE}请输入该玩家任意地图代码：${NC}"
     read -r map_code
@@ -1142,6 +1132,14 @@ except:
       -d "frdId=$AUTHOR_USERID" 2>/dev/null)
     
     echo -e "\n${GREEN}════════════════════ 玩家档案 ════════════════════${NC}\n"
+    
+    # 提取作者信息用于关系图谱
+    AUTHOR_NAME=""
+    AUTHOR_AVATAR=""
+    AUTHOR_LEVEL=""
+    AUTHOR_TITLE=""
+    AUTHOR_CLAN=""
+    AUTHOR_GENDER=""
     
     python3 - << EOF
 import sys, json, time
@@ -1265,6 +1263,398 @@ except Exception as e:
     print(f"  解析关系图谱失败: {e}")
 EOF
     
+    echo -e "\n${CYAN}════════════════════════════════════════════════════${NC}"
+    
+    # 询问是否生成关系图谱
+    echo -e "\n${YELLOW}是否生成该玩家的力导向图关系图谱？${NC}"
+    echo -e "${BLUE}[y/n] (默认 n):${NC}"
+    read -r gen_graph
+    
+    if [[ "$gen_graph" == "y" || "$gen_graph" == "Y" ]]; then
+        echo -e "\n${BLUE}正在生成关系图谱...${NC}"
+        
+        # 重新提取作者信息用于生成图谱
+        AUTHOR_NAME=$(echo "$USER_RESP" | python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    basic = data.get('data', {}).get('basic', {})
+    print(basic.get('nickName', '未知'))
+except:
+    print('未知')
+" 2>/dev/null)
+        
+        AUTHOR_AVATAR=$(echo "$USER_RESP" | python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    basic = data.get('data', {}).get('basic', {})
+    print(basic.get('avatarUrl', ''))
+except:
+    print('')
+" 2>/dev/null)
+        
+        AUTHOR_LEVEL=$(echo "$USER_RESP" | python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    basic = data.get('data', {}).get('basic', {})
+    print(basic.get('level', 0))
+except:
+    print('0')
+" 2>/dev/null)
+        
+        AUTHOR_TITLE=$(echo "$USER_RESP" | python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    basic = data.get('data', {}).get('basic', {})
+    print(basic.get('title', ''))
+except:
+    print('')
+" 2>/dev/null)
+        
+        AUTHOR_CLAN=$(echo "$USER_RESP" | python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    basic = data.get('data', {}).get('basic', {})
+    clan = basic.get('clan', {})
+    print(clan.get('name', ''))
+except:
+    print('')
+" 2>/dev/null)
+        
+        AUTHOR_GENDER=$(echo "$USER_RESP" | python3 -c "
+import sys, json
+try:
+    data = json.load(sys.stdin)
+    basic = data.get('data', {}).get('basic', {})
+    gender = basic.get('gender', 0)
+    if gender == 1:
+        print('男')
+    elif gender == 2:
+        print('女')
+    else:
+        print('保密')
+except:
+    print('保密')
+" 2>/dev/null)
+        
+        OUTPUT_DIR="/storage/emulated/0/partyd3js"
+        mkdir -p "$OUTPUT_DIR" 2>/dev/null
+        TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+        OUTPUT_FILE="$OUTPUT_DIR/关系图谱_${AUTHOR_NAME}_${TIMESTAMP}.html"
+        
+        export RELATION_RESP
+        export AUTHOR_NAME
+        export AUTHOR_AVATAR
+        export AUTHOR_LEVEL
+        export AUTHOR_TITLE
+        export AUTHOR_CLAN
+        export AUTHOR_GENDER
+        export OUTPUT_FILE
+        
+        python3 << 'PYEOF'
+import os
+import json
+
+rel_data = json.loads(os.environ.get('RELATION_RESP', '{}'))
+relations = rel_data.get('data', {}).get('relation', {}).get('relations', {})
+
+rel_map = {
+    "0001": {"type": "CP", "color": "#ff9a9e"},
+    "0002": {"type": "师父", "color": "#6ecb63"},
+    "0003": {"type": "徒弟", "color": "#4da6ff"},
+    "0004": {"type": "搭档", "color": "#ffd166"},
+    "0005": {"type": "闺蜜", "color": "#db4dff"},
+    "0006": {"type": "基友", "color": "#5e60ce"}
+}
+
+friends_list = []
+for rel_key, rel_data in relations.items():
+    rel_type = rel_map.get(rel_key, {}).get("type", rel_key)
+    rel_color = rel_map.get(rel_key, {}).get("color", "#999")
+    for f in rel_data.get("friends", []):
+        intimacy = f.get("intimacy", 0)
+        avatar = f.get("avatarUrl", "")
+        if not avatar or avatar.startswith("avatar://"):
+            avatar = f"https://ui-avatars.com/api/?name={f.get('nickName', '玩家')}&background=random&size=80"
+        friends_list.append({
+            "id": f"f{f.get('userShortId', '')}",
+            "nickName": f.get("nickName", "未知"),
+            "avatarUrl": avatar,
+            "level": f.get("level", 0),
+            "gender": f.get("gender", 0),
+            "intimacy": intimacy,
+            "clan": f.get("clan", {}).get("name", ""),
+            "relationType": rel_type,
+            "relationColor": rel_color,
+            "relationKey": rel_key
+        })
+
+author_name = os.environ.get('AUTHOR_NAME', '未知')
+author_avatar = os.environ.get('AUTHOR_AVATAR', '')
+author_level = os.environ.get('AUTHOR_LEVEL', '0')
+author_title = os.environ.get('AUTHOR_TITLE', '')
+author_clan = os.environ.get('AUTHOR_CLAN', '')
+gender_text = os.environ.get('AUTHOR_GENDER', '保密')
+output_file = os.environ.get('OUTPUT_FILE', '/storage/emulated/0/partyd3js/output.html')
+
+html = f'''<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>{author_name}的关系图谱</title>
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+body{{margin:0;padding:0;background:linear-gradient(135deg,#e0f0ff,#c5e3ff);font-family:"Microsoft YaHei",sans-serif;overflow:hidden;}}
+.container{{position:relative;width:100vw;height:100vh;}}
+#graph{{width:100%;height:100%;}}
+.header{{position:absolute;top:20px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,.85);border-radius:20px;padding:15px 30px;box-shadow:0 5px 15px rgba(0,0,0,.1);z-index:100;display:flex;align-items:center;justify-content:center;flex-direction:column;max-width:400px;border:2px solid #4a90e2;}}
+.header-main{{display:flex;align-items:center;margin-bottom:8px;}}
+.user-avatar{{width:60px;height:60px;border-radius:50%;margin-right:15px;border:3px solid #ff7979;background:#f0f8ff;display:flex;align-items:center;justify-content:center;color:#ff7979;font-weight:bold;}}
+.user-info h2{{margin:0;color:#333;font-size:20px;font-weight:bold;}}
+.user-title{{color:#ff6b6b;font-size:14px;margin-top:5px;font-weight:bold;}}
+.clan-info{{color:#4a90e2;font-size:14px;margin-top:2px;}}
+.intimacy-display{{background:linear-gradient(to right,#ff9a9e,#fad0c4);border-radius:15px;padding:5px 15px;margin-top:10px;color:white;font-weight:bold;font-size:14px;box-shadow:0 3px 6px rgba(0,0,0,.1);}}
+.legend{{position:absolute;bottom:20px;left:20px;background:rgba(255,255,255,.85);border-radius:15px;padding:15px;box-shadow:0 5px 15px rgba(0,0,0,.1);z-index:100;max-width:250px;}}
+.legend h3{{margin:0 0 10px 0;color:#333;font-size:16px;}}
+.legend-item{{display:flex;align-items:center;margin-bottom:8px;font-size:14px;}}
+.legend-color{{width:20px;height:20px;border-radius:50%;margin-right:10px;border:2px solid white;}}
+.node{{cursor:pointer;filter:drop-shadow(0 3px 5px rgba(0,0,0,.2));}}
+.tooltip{{position:absolute;background:rgba(255,255,255,.95);border-radius:12px;padding:15px;box-shadow:0 8px 20px rgba(0,0,0,.15);max-width:250px;z-index:100;opacity:0;transition:opacity .3s;border:1px solid #ddd;pointer-events:none;}}
+.tooltip-header{{display:flex;align-items:center;margin-bottom:10px;border-bottom:1px solid #eee;padding-bottom:10px;}}
+.tooltip-avatar{{width:50px;height:50px;border-radius:50%;margin-right:10px;border:2px solid #4a90e2;}}
+.tooltip-name{{font-weight:bold;font-size:18px;color:#333;}}
+.tooltip-title{{color:#ff7979;font-size:14px;margin-top:3px;}}
+.tooltip-info{{padding-top:8px;color:#666;font-size:14px;line-height:1.5;}}
+.bg-element{{position:absolute;opacity:.08;z-index:1;pointer-events:none;}}
+.avatar-container{{width:100%;height:100%;display:flex;align-items:center;justify-content:center;border-radius:50%;overflow:hidden;background:#f0f8ff;}}
+.avatar-image{{width:100%;height:100%;object-fit:cover;}}
+</style>
+</head>
+<body>
+<div class="container">
+  <div id="bg-elements"></div>
+  <div class="header">
+    <div class="header-main">
+      <img class="user-avatar" src="{author_avatar}" onerror="this.src='https://ui-avatars.com/api/?name={author_name}&background=random&size=80'">
+      <div class="user-info">
+        <h2>{author_name}</h2>
+        <div class="user-title">{author_title}</div>
+        <div class="clan-info">{author_clan}</div>
+      </div>
+    </div>
+    <div class="intimacy-display">亲密度≥100的好友显示在关系图谱中</div>
+  </div>
+  <div class="legend">
+    <h3>关系图例</h3>
+    <div class="legend-item"><div class="legend-color" style="background:#ff9a9e"></div><span>CP</span></div>
+    <div class="legend-item"><div class="legend-color" style="background:#6ecb63"></div><span>师父</span></div>
+    <div class="legend-item"><div class="legend-color" style="background:#4da6ff"></div><span>徒弟</span></div>
+    <div class="legend-item"><div class="legend-color" style="background:#ffd166"></div><span>搭档</span></div>
+    <div class="legend-item"><div class="legend-color" style="background:#db4dff"></div><span>闺蜜</span></div>
+    <div class="legend-item"><div class="legend-color" style="background:#5e60ce"></div><span>基友</span></div>
+  </div>
+  <svg id="graph"></svg>
+  <div class="tooltip"></div>
+</div>
+
+<script>
+const me = {{
+  id: "center",
+  name: "{author_name}",
+  avatar: "{author_avatar}",
+  level: {author_level},
+  gender: "{gender_text}",
+  title: "{author_title}",
+  clan: "{author_clan}"
+}};
+
+const relMap = {{
+  "0001": {{ type: "CP", color: "#ff9a9e" }},
+  "0002": {{ type: "师父", color: "#6ecb63" }},
+  "0003": {{ type: "徒弟", color: "#4da6ff" }},
+  "0004": {{ type: "搭档", color: "#ffd166" }},
+  "0005": {{ type: "闺蜜", color: "#db4dff" }},
+  "0006": {{ type: "基友", color: "#5e60ce" }}
+}};
+
+const relations = {{'''
+
+for rel_key in ["0001", "0002", "0003", "0004", "0005", "0006"]:
+    rel_type = rel_map.get(rel_key, {}).get("type", rel_key)
+    html += f'\n  "{rel_key}": ['
+    group = [f for f in friends_list if f.get("relationKey") == rel_key]
+    for i, f in enumerate(group):
+        gender_val = f.get("gender", 0)
+        intimacy = f.get("intimacy", 0)
+        clan = f.get("clan", "")
+        html += f'''
+    {{
+      id: "{f.get("id", "")}",
+      nickName: "{f.get("nickName", "未知")}",
+      avatarUrl: "{f.get("avatarUrl", "")}",
+      level: {f.get("level", 0)},
+      gender: {gender_val},
+      intimacy: {intimacy},
+      clan: "{clan}"
+    }}'''
+        if i < len(group) - 1:
+            html += ','
+    html += '\n  ],'
+
+html += f'''
+}};
+
+const nodes = [me];
+const links = [];
+Object.entries(relations).forEach(([k, arr]) => {{
+  const {{ type, color }} = relMap[k];
+  arr.forEach(f => {{
+    const avatarReal = f.avatarUrl && !f.avatarUrl.startsWith("avatar://") && f.avatarUrl !== "" ? f.avatarUrl : `https://ui-avatars.com/api/?name=${{encodeURIComponent(f.nickName||"玩家")}}&background=random&size=80`;
+    nodes.push({{
+      ...f,
+      nickName: f.nickName,
+      avatarReal,
+      intimacy: f.intimacy,
+      relationType: type,
+      gender: f.gender === 0 ? "保密" : f.gender === 1 ? "男" : "女",
+      clan: f.clan || "无战队"
+    }});
+    links.push({{ source: me.id, target: f.id, relationType: type, color, value: f.intimacy }});
+  }});
+}});
+
+const bg = d3.select("#bg-elements");
+const emojis = ["🔨", "🥚", "🎮", "⭐", "🎖️"];
+for (let i = 0; i < 25; i++) {{
+  bg.append("div").classed("bg-element", true)
+    .style("font-size", `${{Math.random() * 40 + 20}}px`)
+    .style("left", `${{Math.random() * 100}}%`)
+    .style("top", `${{Math.random() * 100}}%`)
+    .text(emojis[Math.floor(Math.random() * emojis.length)]);
+}}
+
+const width = window.innerWidth, height = window.innerHeight;
+const svg = d3.select("#graph").attr("width", width).attr("height", height);
+const container = svg.append("g");
+
+const simulation = d3.forceSimulation(nodes)
+  .force("link", d3.forceLink(links).id(d => d.id).distance(d => {{
+    const distMap = {{ CP: 100, 师父: 180, 徒弟: 220, 搭档: 160, 闺蜜: 150, 基友: 170 }};
+    return distMap[d.relationType] || 180;
+  }}))
+  .force("charge", d3.forceManyBody().strength(-300))
+  .force("center", d3.forceCenter(width / 2, height / 2))
+  .force("collision", d3.forceCollide().radius(d => d.id === "center" ? 80 : 50));
+
+const link = container.append("g").selectAll("line")
+  .data(links).enter().append("line")
+  .attr("stroke", d => d.color).attr("stroke-width", 2)
+  .attr("stroke-dasharray", "5,2").attr("stroke-opacity", 0.6);
+
+const linkText = container.append("g").selectAll("text")
+  .data(links).enter().append("text")
+  .text(d => d.value).attr("font-size", 12).attr("font-weight", "bold")
+  .attr("fill", "#2c3e50").attr("pointer-events", "none");
+
+const node = container.append("g").selectAll("g")
+  .data(nodes).enter().append("g")
+  .attr("class", "node")
+  .call(d3.drag()
+    .on("start", dragstarted)
+    .on("drag", dragged)
+    .on("end", dragended))
+  .on("mouseover", showTooltip)
+  .on("mouseout", hideTooltip);
+
+node.append("circle")
+  .attr("r", d => d.id === "center" ? 40 : 32)
+  .attr("fill", "#fff")
+  .attr("stroke", d => d.relationType ? relMap[Object.keys(relMap).find(k => relMap[k].type === d.relationType)].color : "#ff7979")
+  .attr("stroke-width", 4);
+
+const avatar = node.append("foreignObject")
+  .attr("width", d => d.id === "center" ? 80 : 64)
+  .attr("height", d => d.id === "center" ? 80 : 64)
+  .attr("x", d => d.id === "center" ? -40 : -32)
+  .attr("y", d => d.id === "center" ? -40 : -32);
+avatar.append("xhtml:div").attr("class", "avatar-container")
+  .html(d => {{
+    const url = d.avatarReal || d.avatar || `https://ui-avatars.com/api/?name=${{encodeURIComponent(d.nickName || d.name || "玩家")}}&background=random&size=80`;
+    return `<img src="${{url}}" class="avatar-image" onerror="this.src='https://via.placeholder.com/60?text=${{(d.nickName || d.name).slice(-2)}}'">`;
+  }});
+
+node.filter(d => d.id !== "center")
+  .append("text").attr("dy", -12).attr("text-anchor", "middle")
+  .attr("fill", d => relMap[Object.keys(relMap).find(k => relMap[k].type === d.relationType)].color)
+  .attr("font-weight", "bold").text(d => d.relationType);
+node.filter(d => d.id !== "center")
+  .append("text").attr("dy", 45).attr("text-anchor", "middle")
+  .attr("fill", "#ff6b6b").attr("font-size", 14).attr("font-weight", "bold")
+  .text(d => d.intimacy);
+
+function dragstarted(e, d) {{ if (!e.active) simulation.alphaTarget(.3); d.fx = d.x; d.fy = d.y; }}
+function dragged(e, d) {{ d.fx = e.x; d.fy = e.y; }}
+function dragended(e, d) {{ if (!e.active) simulation.alphaTarget(0); d.fx = null; d.fy = null; }}
+
+simulation.on("tick", () => {{
+  link.attr("x1", d => d.source.x).attr("y1", d => d.source.y)
+      .attr("x2", d => d.target.x).attr("y2", d => d.target.y);
+  linkText.attr("x", d => (d.source.x + d.target.x) / 2).attr("y", d => (d.source.y + d.target.y) / 2 + 3);
+  node.attr("transform", d => `translate(${{d.x}},${{d.y}})`);
+}});
+
+svg.call(d3.zoom().scaleExtent([.5, 3]).on("zoom", e => container.attr("transform", e.transform)));
+
+function showTooltip(e, d) {{
+  const t = d3.select(".tooltip");
+  t.html(`
+    <div class="tooltip-header">
+      <img src="${{d.avatarReal || d.avatar}}" class="tooltip-avatar" onerror="this.src='https://ui-avatars.com/api/?name=${{(d.nickName || d.name).slice(-2)}}&background=random&size=50'"/>
+      <div>
+        <div class="tooltip-name">${{d.nickName || d.name}}</div>
+        <div class="tooltip-title">${{d.title || "无称号"}}</div>
+      </div>
+    </div>
+    <div class="tooltip-info">
+      <div>关系: <b style="color:${{relMap[Object.keys(relMap).find(k => relMap[k].type === d.relationType)].color}}">${{d.relationType || "自己"}}</b></div>
+      <div>等级: ${{d.level}}</div>
+      <div>战队: ${{d.clan || "无战队"}}</div>
+      <div>亲密度: <b>${{d.intimacy || "无"}}</b></div>
+      <div>性别: ${{d.gender || "保密"}}</div>
+    </div>
+  `).style("left", (e.pageX + 15) + "px").style("top", (e.pageY - 15) + "px").style("opacity", 1);
+}}
+function hideTooltip() {{ d3.select(".tooltip").style("opacity", 0); }}
+</script>
+</body>
+</html>
+'''
+
+with open(output_file, 'w', encoding='utf-8') as f:
+    f.write(html)
+
+print("SUCCESS")
+PYEOF
+
+        if [ $? -eq 0 ] && [ -f "$OUTPUT_FILE" ]; then
+            friend_count=$(grep -o '"id": "f' "$OUTPUT_FILE" | wc -l)
+            echo -e "\n${GREEN}════════════════════════════════════════${NC}"
+            echo -e "${GREEN}✅ 关系图谱生成成功！${NC}"
+            echo -e "${CYAN}📁 输出文件: $OUTPUT_FILE${NC}"
+            echo -e "${CYAN}📊 好友数量: $friend_count 人${NC}"
+            echo -e "${GREEN}════════════════════════════════════════${NC}"
+            echo -e "\n${YELLOW}💡 在浏览器中打开此HTML文件即可查看力导向图${NC}"
+        else
+            echo -e "${RED}❌ 关系图谱生成失败${NC}"
+        fi
+    else
+        echo -e "\n${YELLOW}已跳过关系图谱生成${NC}"
+    fi
+    
     echo -e "\n${CYAN}按回车键返回主菜单...${NC}"
     read input
 }
@@ -1314,14 +1704,14 @@ func_latest_maps() {
                 else
                     echo -e "${RED}❌ 输入无效，请输入1-100之间的数字${NC}"
                 fi
-                sleep 1
+                sleep 0.3
                 ;;
             0)
                 return
                 ;;
             *)
                 echo -e "${RED}无效选项${NC}"
-                sleep 1
+                sleep 0.3
                 ;;
         esac
     done
@@ -1920,7 +2310,7 @@ while true; do
             ;;
         *)
             echo -e "${RED}无效选项，请重新选择${NC}"
-            sleep 1
+            sleep 0.3
             ;;
     esac
 done
