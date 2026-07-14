@@ -2,6 +2,7 @@
 
 # ==================== 派对制造工具箱 ====================
 # 版本：5.0 - 集成关系图谱生成
+# 5.1.1 集成四名玩家给目标打工，删除拉取天梯列表字段
 
 # ==================== 颜色定义 ====================
 GREEN='\033[0;32m'
@@ -1830,7 +1831,7 @@ try:
     }
     
     # 表头
-    print(f"  {'序号':<4} {'地图名称':<20} {'地图码':<10} {'难度':<6} {'作者':<12} {'游玩':<8} {'点赞':<6} {'评论':<6}")
+    print(f"  {'序号':<4} {'地图名称':<20} {'地图码':<10} {'作者':<12} {'游玩':<8} {'点赞':<6} {'评论':<6}")
     print(f"  {'─'*85}")
     
     for idx, lev in enumerate(levels, 1):
@@ -1840,8 +1841,8 @@ try:
         if len(map_name) > 18:
             map_name = map_name[:16] + ".."
         
-        rank = lev.get('rank', 'unknown')
-        rank_display = rank_names.get(rank, rank)
+        #rank = lev.get('rank', 'unknown')
+        #rank_display = rank_names.get(rank, rank)
         
         play_count = lev.get('playCount', 0)
         likes = lev.get('likes', 0)
@@ -1858,14 +1859,14 @@ try:
         else:
             play_str = str(play_count)
         
-        print(f"  {idx:<4} {map_name:<20} {map_code:<10} {rank_display:<6} {author_name:<12} {play_str:<8} {likes:<6} {coments:<6}")
+        print(f"  {idx:<4} {map_name:<20} {map_code:<10} {author_name:<12} {play_str:<8} {likes:<6} {coments:<6}")
     
     # 统计汇总
     total_play = sum(l.get('playCount', 0) for l in levels)
     total_likes = sum(l.get('likes', 0) for l in levels)
     total_comments = sum(l.get('coments', 0) for l in levels)
     
-    print(f"\n  📊 统计汇总")
+    print(f"\n   统计汇总")
     print(f"     共 {len(levels)} 个地图")
     print(f"     总游玩次数: {total_play:,}")
     print(f"     总点赞数: {total_likes}")
@@ -1883,7 +1884,7 @@ EOF
     read input
 }
 
-# ==================== 功能6：金矿打工 ====================
+# ==================== 功能6：金矿打工（支持多账号） ====================
 func_gold_mine() {
     print_header
     echo -e "${YELLOW}>>> 金矿打工${NC}\n"
@@ -1975,6 +1976,93 @@ except:
         echo -e "${GREEN}✅ 打工成功！${NC}"
         echo -e "   你正在为 ${CYAN}$nick${NC} 的金矿工作"
         echo -e "${GREEN}════════════════════════════════════════${NC}"
+        
+        # ==================== 询问是否使用其他3个账号打工 ====================
+        echo -e "\n${YELLOW}是否使用其他3个账号也为此玩家打工？${NC}"
+        echo -e "${BLUE}[y/n] (默认 n):${NC}"
+        read -r extra_work
+        
+        if [[ "$extra_work" == "y" || "$extra_work" == "Y" ]]; then
+            echo -e "\n${BLUE}使用额外3个账号为 $nick 打工...${NC}"
+            
+            # 硬编码的3个额外JWT
+            EXTRA_JWT1="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkZXZJZCI6ImNiM2FmYjQ0ZjYzYzI1OWQ0OTQ0NWJmNTM0MzA1YjRkIiwiZmxhZyI6ImQ1YjQiLCJmcm9tIjoidGFwdGFwIiwibHQiOiJndWVzdCIsInNzbiI6IjUyOTkiLCJ1c2VyaWQiOiI2YTU2MmI4YmU4ZDViNTViYjRmOTFmMzUiLCJ2IjoiMCJ9.69uVhcJyQiVeZ-GwmV8Bfy_kC1pg4Dj0rVARpO7SlLc"
+            EXTRA_JWT2="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkZXZJZCI6IjdlY2YxOTRhZGQ5NWVkMmQ1ZTZhMWU1MGFiYmIyMDEzIiwiZmxhZyI6ImE3NmUiLCJmcm9tIjoidGFwdGFwIiwibHQiOiJndWVzdCIsInNzbiI6IjUyOTkiLCJ1c2VyaWQiOiI2YTU2MmI4ZGU4ZDViNTViYjRmOTFmMzciLCJ2IjoiMCJ9.rS8JFlzPxw_jnYBO9_WhsKX6wnpUJi6U-dWKYLIWivY"
+            EXTRA_JWT3="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkZXZJZCI6IjlmMWNhZTIxZmFiYzgxZjFmMzViN2ExYmMyMjNkMmU1IiwiZmxhZyI6ImVlZGQiLCJmcm9tIjoidGFwdGFwIiwibHQiOiJndWVzdCIsInNzbiI6IjUyOTkiLCJ1c2VyaWQiOiI2YTU2MmI4ZmU4ZDViNTViYjRmOTFmMzkiLCJ2IjoiMCJ9.RMXkY-BntXpPFiDPRNZ0JIybLYRrLPdYiRAGwxdXzRQ"
+            
+            # 对应的Device ID（从JWT中提取的devId）
+            EXTRA_DEVICE1="cb3afb44f63c259d49445bf534305b4d"
+            EXTRA_DEVICE2="7ecf194add95ed2d5e6a1e50abb2013"
+            EXTRA_DEVICE3="9f1cae21fabc81f1f35b7a1bc223d2e5"
+            
+            work_success=0
+            work_fail=0
+            
+            # 打工函数（内部使用）
+            do_extra_work() {
+                local jwt="$1"
+                local device_id="$2"
+                local idx="$3"
+                
+                echo -e "\n${BLUE}[账号 $idx] 获取会话...${NC}"
+                
+                # 获取session
+                local extra_session=$(curl -s -X POST "https://battlecraft.tuimotuimo.com/battlecraft/account/loginsession" \
+                  -H "Content-Type: application/x-www-form-urlencoded" \
+                  -H "ssn: $SSN" \
+                  -H "ver: $VER" \
+                  -H "Cookie: $COOKIE" \
+                  --data-urlencode "timezone=8" \
+                  --data-urlencode "v2=true" \
+                  --data-urlencode "v3=true" \
+                  --data-urlencode "session=$jwt" \
+                  --data-urlencode "deviceId=$device_id" \
+                  --data-urlencode "tutorialType=ugc" \
+                  --compressed 2>/dev/null | grep -o '"sessionid":"[^"]*"' | cut -d'"' -f4)
+                
+                if [ -z "$extra_session" ]; then
+                    echo -e "${RED}  ❌ 账号 $idx 获取Session失败${NC}"
+                    work_fail=$((work_fail + 1))
+                    return 1
+                fi
+                echo -e "${GREEN}  ✓ 账号 $idx Session获取成功${NC}"
+                
+                # 发送打工请求
+                local extra_work_resp=$(curl -s -X POST "https://battlecraft.tuimotuimo.com/battlecraft/bank/startwork" \
+                  -H "Auth: $extra_session" \
+                  -H "ssn: $SSN" \
+                  -H "ver: $VER" \
+                  -H "Cookie: $COOKIE" \
+                  -H "Content-Type: application/x-www-form-urlencoded" \
+                  -d "friendId=$friend_id")
+                
+                local extra_code=$(echo "$extra_work_resp" | python3 -c "import sys, json; print(json.load(sys.stdin).get('code', -1))" 2>/dev/null)
+                
+                if [ "$extra_code" = "0" ]; then
+                    local extra_nick=$(echo "$extra_work_resp" | python3 -c "import sys, json; d=json.load(sys.stdin); print(d.get('data',{}).get('receiver',{}).get('nickName',''))" 2>/dev/null)
+                    echo -e "${GREEN}  ✅ 账号 $idx 打工成功！为 $extra_nick 打工${NC}"
+                    work_success=$((work_success + 1))
+                else
+                    local extra_msg=$(echo "$extra_work_resp" | python3 -c "import sys, json; print(json.load(sys.stdin).get('msg', '未知错误'))" 2>/dev/null)
+                    echo -e "${RED}  ❌ 账号 $idx 打工失败: $extra_msg${NC}"
+                    work_fail=$((work_fail + 1))
+                fi
+                
+                # 延迟一下避免请求过快
+                sleep 0.5
+            }
+            
+            # 执行3个账号的打工
+            do_extra_work "$EXTRA_JWT1" "$EXTRA_DEVICE1" "1"
+            do_extra_work "$EXTRA_JWT2" "$EXTRA_DEVICE2" "2"
+            do_extra_work "$EXTRA_JWT3" "$EXTRA_DEVICE3" "3"
+            
+            echo -e "\n${GREEN}════════════════════════════════════════${NC}"
+            echo -e "${GREEN}📊 额外打工统计：${NC}"
+            echo -e "   ✅ 成功: ${GREEN}$work_success${NC} 个账号"
+            echo -e "   ❌ 失败: ${RED}$work_fail${NC} 个账号"
+            echo -e "${GREEN}════════════════════════════════════════${NC}"
+        fi
     else
         msg=$(echo "$work_resp" | python3 -c "import sys, json; print(json.load(sys.stdin).get('msg', '未知错误'))" 2>/dev/null)
         echo -e "${RED}❌ 打工失败：$msg${NC}"
