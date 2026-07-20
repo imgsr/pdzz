@@ -1,10 +1,11 @@
 #!/system/bin/sh
 
-# ==================== 派对制造工具箱 ====================
-# 版本：5.1.2 - 新增批量昵称拉取功能
-# 5.1.1 集成四名玩家给目标打工，删除拉取天梯列表字段
+# == 派对制造工具箱 ==
+# 版本：5.2.1 查询玩家信息时尝试显示其所在城市
+#5.1.2 - 新增批量昵称拉取功能
+# 5.1.1 集成四名玩家给目标打工，删除拉取天梯列表字段Unknown
 
-# ==================== 颜色定义 ====================
+# == 颜色定义 ==
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
@@ -12,12 +13,12 @@ RED='\033[0;31m'
 CYAN='\033[0;36m'
 NC='\033[0m'
 
-# ==================== Termux 保持唤醒 ====================
+# == Termux 保持唤醒 ==
 if [ -d "/data/data/com.termux" ] || command -v pkg >/dev/null 2>&1; then
     termux-wake-lock 2>/dev/null
 fi
 
-# ==================== 配置文件路径（跨平台兼容） ====================
+# == 配置文件路径（跨平台兼容） ==
 if [ -d "/storage/emulated/0" ] && [ -w "/storage/emulated/0" ]; then
     CONFIG_DIR="/storage/emulated/0/party_tool"
     CONFIG_FILE="$CONFIG_DIR/config.txt"
@@ -33,7 +34,7 @@ if [ ! -d "$CONFIG_DIR" ]; then
     mkdir -p "$CONFIG_DIR" 2>/dev/null
 fi
 
-# ==================== 检查并安装 Python ====================
+# == 检查并安装 Python ==
 check_and_install_python() {
     if command -v python3 >/dev/null 2>&1; then
         echo -e "${GREEN}✅ Python3 已安装${NC}"
@@ -81,7 +82,7 @@ check_and_install_python() {
     fi
 }
 
-# ==================== 默认配置 ====================
+# == 默认配置 ==
 DEFAULT_JWT="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJkZXZJZCI6IjMzOWY3YWJhZTg2OGI3ZjBhODMzODc3YjBkNWQ0NjQ1XG5kYTNkYzlhOTk5Mjg5OGY5MDk2YWI5MjAyOTVkM2ZhZSIsImZsYWciOiJiZGY2IiwiZnJvbSI6InRhcHRhcCIsImx0IjoiZ3Vlc3QiLCJzc24iOiI1Mjk5IiwidXNlcmlkIjoiNjlmNTk5MDNlOGQ1YjU1YmI0ZWViYjAyIiwidiI6IjAifQ.RHQ1EK0pEwiXBTILUyLNgHCetsfO57fUmJtcMGPqG-A"
 DEFAULT_DEVICE_ID="339f7abae868b7f0a833877b0d5d46454a3dc9a9992898f9096ab920295d3fae"
 DEFAULT_SSN="3c05"
@@ -90,7 +91,7 @@ DEFAULT_COOKIE="SERVERID=769e7e1294f37fd70e4a8fd5d4a4a403|1774672107|1774600237"
 
 MAP_COUNT=100
 
-# ==================== 随机生成Device ID ====================
+# == 随机生成Device ID ==
 generate_random_device_id() {
     RANDOM_ID=$(openssl rand -hex 16 2>/dev/null)
     if [ -z "$RANDOM_ID" ]; then
@@ -102,7 +103,7 @@ generate_random_device_id() {
     echo "$RANDOM_ID"
 }
 
-# ==================== 配置加载/保存 ====================
+# == 配置加载/保存 ==
 load_config() {
     if [ -f "$CONFIG_FILE" ]; then
         while IFS='=' read -r key value; do
@@ -143,7 +144,7 @@ SAVED_MAP_COUNT=$MAP_COUNT
 EOF
 }
 
-# ==================== 获取Session（通用） ====================
+# == 获取Session（通用） ==
 get_session() {
     local session=$(curl -s -X POST "https://battlecraft.tuimotuimo.com/battlecraft/account/loginsession" \
       -H "Content-Type: application/x-www-form-urlencoded" \
@@ -160,7 +161,7 @@ get_session() {
     echo "$session"
 }
 
-# ==================== 36进制转10进制 ====================
+# == 36进制转10进制 ==
 base36_to_dec() {
     local input="$1"
     if [ -z "$input" ]; then
@@ -170,7 +171,7 @@ base36_to_dec() {
     python3 -c "import sys; print(int(sys.stdin.read().strip().lower(), 36))" <<< "$input" 2>/dev/null
 }
 
-# ==================== 工具函数 ====================
+# == 工具函数 ==
 clear_screen() {
     printf "\033[2J\033[H"
 }
@@ -205,7 +206,7 @@ print_menu() {
     echo ""
 }
 
-# ==================== 功能A：查看IP ====================
+# == 功能A：查看IP ==
 func_show_ip() {
     print_header
     echo -e "${YELLOW}>>> 查询本机IP地址${NC}\n"
@@ -238,7 +239,7 @@ func_show_ip() {
     read input
 }
 
-# ==================== 功能B：设备ID设置 ====================
+# == 功能B：设备ID设置 ==
 func_device_setup() {
     while true; do
         print_header
@@ -314,7 +315,7 @@ func_device_setup() {
     done
 }
 
-# ==================== 功能C：查询游戏版本信息 ====================
+# == 功能C：查询游戏版本信息 ==
 func_game_version() {
     print_header
     echo -e "${YELLOW}>>> 查询游戏版本信息${NC}\n"
@@ -381,7 +382,7 @@ except Exception as e:
     read input
 }
 
-# ==================== 功能D：查询游戏公告 ====================
+# == 功能D：查询游戏公告 ==
 func_game_notice() {
     print_header
     echo -e "${YELLOW}>>> 查询游戏公告${NC}\n"
@@ -439,7 +440,7 @@ except Exception as e:
     read input
 }
 
-# ==================== 功能E：查看在线公告 ====================
+# == 功能E：查看在线公告 ==
 func_github_notice() {
     print_header
     echo -e "${YELLOW}>>> 查看在线公告${NC}\n"
@@ -460,7 +461,7 @@ func_github_notice() {
     read input
 }
 
-# ==================== 功能F：查看工具箱版本信息 ====================
+# == 功能F：查看工具箱版本信息 ==
 func_toolbox_version() {
     print_header
     echo -e "${YELLOW}>>> 查看工具箱版本${NC}\n"
@@ -481,14 +482,14 @@ func_toolbox_version() {
     read input
 }
 
-# ==================== 功能1：房间列表 ====================
+# == 功能1：房间列表 ==
 func_room_list() {
     print_header
     echo -e "${YELLOW}>>> 派对制造房间列表${NC}\n"
 
-    echo "===================="
+    echo "=="
     echo "开始执行房间信息获取"
-    echo "===================="
+    echo "=="
 
     echo "使用JWT: ${JWT:0:50}..."
 
@@ -584,12 +585,12 @@ EOF
         echo "$ROOM_DETAIL_RESPONSE"
     fi
 
-    echo "=============================="
+    echo "============"
     echo -e "\n${CYAN}按回车键返回主菜单...${NC}"
     read input
 }
 
-# ==================== 功能2：地图查询（增强版） ====================
+# == 功能2：地图查询（增强版） ==
 func_map_query() {
     print_header
     echo -e "${YELLOW}>>> 派对制造地图查询${NC}\n"
@@ -693,7 +694,7 @@ def to_base36(num):
 
 map_code = to_base36(lev.get('id', 0))
 
-# ==================== 基础信息 ====================
+# == 基础信息 ==
 print(f"\n📌 【基础信息】")
 print(f"  地图名称：{lev.get('name', '无')}")
 print(f"  地图ID：{lev.get('id', '无')}")
@@ -702,7 +703,7 @@ print(f"  模板ID：{lev.get('templateID', '无')}")
 print(f"  版本：{lev.get('version', '无')}")
 print(f"  发布时间：{time.strftime('%Y-%m-%d %H:%M:%S', time.localtime(lev.get('timestamp', 0) / 1000)) if lev.get('timestamp') else '未知'}")
 
-# ==================== 状态信息 ====================
+# == 状态信息 ==
 status = lev.get('status', 0)
 in_trash = lev.get('inTrash', False)
 
@@ -725,7 +726,7 @@ print(f"  地图状态：{status_desc} (status={status})")
 print(f"  回收站状态：{trash_desc}")
 print(f"  上传状态：{'已上传' if lev.get('uploaded') else '未上传'}")
 
-# ==================== 游玩数据 ====================
+# == 游玩数据 ==
 play_count = lev.get('playCount', 0)
 finish_count = lev.get('finishCount', 0)
 if play_count > 0:
@@ -755,19 +756,19 @@ print(f"  举报数：{lev.get('reports', 0)}")
 print(f"  评分：{rating_desc} (ratings={ratings})")
 print(f"  最佳单人分数：{lev.get('bestScore', 0)}")
 
-# ==================== 模式属性 ====================
+# == 模式属性 ==
 print(f"\n🎯 【模式属性】")
 print(f"  是否双人地图：{'是' if lev.get('pvpOnly') else '否'}")
 print(f"  是否仅PVP模式：{'是' if lev.get('pvpOnly') else '否'}")
 print(f"  通关是否需要星星：{'是' if lev.get('needAllStar') else '否'}")
 print(f"  重生类型：{lev.get('respawnType', 0)} (0:默认 1:气泡 )")
 
-# ==================== 全景图 ====================
+# == 全景图 ==
 has_panorama = lev.get('havePanorama', False)
 print(f"\n🌄 【全景图】")
 print(f"  作者是否解锁全景图：{'是 ✅' if has_panorama else '否 ❌'}")
 
-# ==================== 评论统计 ====================
+# == 评论统计 ==
 comments_baned = lev.get('comentsBaned', 0)
 comment_info = lev.get('commentInfo', {})
 baned_count = comment_info.get('banedCount', 0)
@@ -793,7 +794,7 @@ if sticky:
     print(f"评论ID：{sticky.get('id')}")
     print(f"内容：{show}")
 
-# ==================== 作者信息 ====================
+# == 作者信息 ==
 print(f"\n👤 【作者信息】")
 print(f"  昵称：{owner.get('nickName', '未知')}")
 print(f"  短ID：{owner.get('userShortId', '无')}")
@@ -808,7 +809,7 @@ print(f"  省份：{owner.get('province', '未知')}")
 print(f"  战队：{owner_clan.get('name', '无战队')}")
 print(f"  战队徽章：{owner_clan.get('badge', '无')}")
 
-# ==================== 标签（关闭映射，显示原始值） ====================
+# == 标签（关闭映射，显示原始值） ==
 tags = lev.get('tags', [])
 print(f"\n🏷️ 【标签】")
 if tags:
@@ -816,7 +817,7 @@ if tags:
 else:
     print("  无")
 
-# ==================== 排行榜预览 ====================
+# == 排行榜预览 ==
 top = lev.get("top", [])
 if top:
     print(f"\n🏆 【单人排行榜 Top 3】")
@@ -906,7 +907,7 @@ EOF
     read input
 }
 
-# ==================== 功能3：排行榜查询 ====================
+# == 功能3：排行榜查询 ==
 func_rank_query() {
     while true; do
         print_header
@@ -1039,7 +1040,7 @@ except Exception as e:
     done
 }
 
-# ==================== 功能4：玩家信息查询 + 关系图谱生成 ====================
+# == 功能4：玩家信息查询 + 关系图谱生成 ==
 func_player_info() {
     print_header
     echo -e "${YELLOW}>>> 派对制造玩家信息查询 + 关系图谱生成${NC}\n"
@@ -1162,6 +1163,17 @@ try:
     level = basic.get('level', 0)
     short_id = basic.get('userShortId', '无')
     dan = basic.get('dan', 0)
+    # 地理位置（省份+城市）
+    province = basic.get('province', '')
+    city = basic.get('city', '')
+    if province and city:
+        location = f"{province}{city}"
+    elif province:
+        location = province
+    elif city:
+        location = city
+    else:
+        location = "未设置"
     
     # 战队
     clan = basic.get('clan', {})
@@ -1196,6 +1208,7 @@ try:
     print(f"  🎚️ 等级: {level}")
     print(f"  🎖️ 段位: {dan}")
     print(f"  🔢 短ID: {short_id}")
+    print(f"  📍 位置: {location}")
     print(f"  🏠 战队: {clan_name}")
     print(f"  📅 注册日期: {reg_time}")
     print(f"  ⚖️ 人品值: {honesty_score}")
@@ -1661,7 +1674,7 @@ PYEOF
     read input
 }
 
-# ==================== 功能5：最新地图查询 ====================
+# == 功能5：最新地图查询 ==
 func_latest_maps() {
     while true; do
         print_header
@@ -1885,7 +1898,7 @@ EOF
     read input
 }
 
-# ==================== 功能6：金矿打工（支持多账号） ====================
+# == 功能6：金矿打工（支持多账号） ==
 func_gold_mine() {
     print_header
     echo -e "${YELLOW}>>> 金矿打工${NC}\n"
@@ -1978,7 +1991,7 @@ except:
         echo -e "   你正在为 ${CYAN}$nick${NC} 的金矿工作"
         echo -e "${GREEN}════════════════════════════════════════${NC}"
         
-        # ==================== 询问是否使用其他3个账号打工 ====================
+        # == 询问是否使用其他3个账号打工 ==
         echo -e "\n${YELLOW}是否使用其他3个账号也为此玩家打工？${NC}"
         echo -e "${BLUE}[y/n] (默认 n):${NC}"
         read -r extra_work
@@ -2073,7 +2086,7 @@ except:
     read input
 }
 
-# ==================== 功能7：地图评论工具（支持stamp） ====================
+# == 功能7：地图评论工具（支持stamp） ==
 func_map_comment() {
     print_header
     echo -e "${YELLOW}>>> 地图评论工具（支持stamp）${NC}\n"
@@ -2257,7 +2270,7 @@ func_map_comment() {
     read input
 }
 
-# ==================== 功能8：广播地图工具 ====================
+# == 功能8：广播地图工具 ==
 func_broadcast_map() {
     print_header
     echo -e "${YELLOW}>>> 广播地图工具${NC}\n"
@@ -2340,7 +2353,7 @@ func_broadcast_map() {
     read input
 }
 
-# ==================== 功能9：批量拉取昵称 ====================
+# == 功能9：批量拉取昵称 ==
 func_fetch_nicknames() {
     print_header
     echo -e "${YELLOW}>>> 派对制造批量拉取昵称${NC}\n"
@@ -2420,7 +2433,7 @@ except Exception as e:
     read input
 }
 
-# ==================== 主程序 ====================
+# == 主程序 ==
 check_and_install_python
 load_config
 
