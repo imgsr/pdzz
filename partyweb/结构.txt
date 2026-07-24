@@ -1,0 +1,7 @@
+party_tool_web/
+├── app.py
+├── static/
+│   └── index.html
+└── data/
+    ├── config.json
+    └── graphs/

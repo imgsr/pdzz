@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>派对制造工具箱 Web 版</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Microsoft YaHei", sans-serif;
+            background: #f0f4f8;
+            color: #333;
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .header h1 {
+            font-size: 24px;
+            font-weight: 700;
+        }
+        .header .status {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 25px;
+            flex-wrap: wrap;
+        }
+        .tab-btn {
+            padding: 10px 24px;
+            border: none;
+            border-radius: 25px;
+            background: #e8ecf1;
+            color: #555;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .tab-btn:hover {
+            background: #d5dce6;
+        }
+        .tab-btn.active {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+        }
+        .tab-content {
+            display: none;
+            background: white;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 2px 20px rgba(0,0,0,0.08);
+            animation: fadeIn 0.3s ease;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .form-group {
+            margin-bottom: 18px;
+        }
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 6px;
+            font-size: 14px;
+            color: #555;
+        }
+        .form-group input, .form-group textarea, .form-group select {
+            width: 100%;
+            padding: 10px 14px;
+            border: 2px solid #e0e5ec;
+            border-radius: 10px;
+            font-size: 14px;
+            transition: border 0.3s;
+            font-family: inherit;
+        }
+        .form-group input:focus, .form-group textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .form-group textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        .btn {
+            padding: 10px 30px;
+            border: none;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        }
+        .btn-success {
+            background: #2ecc71;
+            color: white;
+        }
+        .btn-success:hover {
+            background: #27ae60;
+        }
+        .btn-danger {
+            background: #e74c3c;
+            color: white;
+        }
+        .btn-danger:hover {
+            background: #c0392b;
+        }
+        .btn-outline {
+            background: transparent;
+            border: 2px solid #667eea;
+            color: #667eea;
+        }
+        .btn-outline:hover {
+            background: #667eea;
+            color: white;
+        }
+        .btn-sm {
+            padding: 6px 16px;
+            font-size: 12px;
+        }
+        .result-box {
+            margin-top: 20px;
+            background: #f8f9fc;
+            border-radius: 12px;
+            padding: 20px;
+            max-height: 600px;
+            overflow-y: auto;
+            border: 1px solid #e8ecf1;
+        }
+        .result-box pre {
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-family: 'Consolas', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        .result-box .empty {
+            color: #999;
+            text-align: center;
+            padding: 30px 0;
+        }
+        .loading {
+            text-align: center;
+            padding: 30px 0;
+            color: #667eea;
+            font-weight: 600;
+        }
+        .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        .card {
+            background: #f8f9fc;
+            border-radius: 10px;
+            padding: 15px;
+            border: 1px solid #e8ecf1;
+            transition: all 0.2s;
+        }
+        .card:hover {
+            border-color: #667eea;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        }
+        .card .label {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 4px;
+        }
+        .card .value {
+            font-size: 15px;
+            font-weight: 600;
+            color: #333;
+        }
+        .badge {
+            display: inline-block;
+            padding: 2px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .badge-success { background: #d4edda; color: #155724; }
+        .badge-danger { background: #f8d7da; color: #721c24; }
+        .badge-warning { background: #fff3cd; color: #856404; }
+        .badge-info { background: #d1ecf1; color: #0c5460; }
+        .comment-item {
+            border-bottom: 1px solid #eee;
+            padding: 12px 0;
+        }
+        .comment-item:last-child {
+            border-bottom: none;
+        }
+        .comment-item .time {
+            font-size: 12px;
+            color: #999;
+        }
+        .comment-item .user {
+            font-weight: 600;
+            color: #667eea;
+        }
+        .download-btn {
+            margin-top: 15px;
+            display: inline-block;
+        }
+        .config-status {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            font-size: 13px;
+        }
+        .config-status span {
+            opacity: 0.8;
+        }
+        @media (max-width: 768px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+            .header {
+                flex-direction: column;
+                text-align: center;
+                gap: 10px;
+            }
+            .tabs {
+                justify-content: center;
+            }
+            .tab-btn {
+                padding: 8px 16px;
+                font-size: 12px;
+            }
+        }
+        .pagination {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-top: 15px;
+            flex-wrap: wrap;
+        }
+        .pagination input {
+            width: 60px;
+            padding: 6px 10px;
+            border: 2px solid #e0e5ec;
+            border-radius: 8px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎮 派对制造工具箱 Web版</h1>
+            <div class="config-status" id="configStatus">
+                <span>⚙️ 配置已加载</span>
+            </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="tabs" id="tabs">
+            <button class="tab-btn active" data-tab="tab-config">⚙️ 配置</button>
+            <button class="tab-btn" data-tab="tab-map">🗺️ 地图查询</button>
+            <button class="tab-btn" data-tab="tab-player">👤 玩家信息</button>
+            <button class="tab-btn" data-tab="tab-gold">⛏️ 金矿打工</button>
+            <button class="tab-btn" data-tab="tab-comment">💬 地图评论</button>
+            <button class="tab-btn" data-tab="tab-broadcast">📢 广播地图</button>
+        </div>
+
+        <!-- 配置 -->
+        <div class="tab-content active" id="tab-config">
+            <h3 style="margin-bottom: 15px;">🔧 认证配置</h3>
+            <p style="color: #888; font-size: 14px; margin-bottom: 20px;">修改后会自动保存，重启服务后仍然生效</p>
+            <div class="form-group">
+                <label>JWT</label>
+                <input id="cfgJwt" type="text" placeholder="eyJhbGciOiJIUzI1NiIs...">
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Device ID</label>
+                    <input id="cfgDevice" type="text" placeholder="32位十六进制">
+                </div>
+                <div class="form-group">
+                    <label>SSN</label>
+                    <input id="cfgSsn" type="text" placeholder="例如: 3c05">
+                </div>
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Ver</label>
+                    <input id="cfgVer" type="text" placeholder="例如: 2.1.93">
+                </div>
+                <div class="form-group">
+                    <label>Cookie</label>
+                    <input id="cfgCookie" type="text" placeholder="SERVERID=...">
+                </div>
+            </div>
+            <button class="btn btn-primary" onclick="saveConfig()">💾 保存配置</button>
+            <button class="btn btn-outline" onclick="loadConfig()" style="margin-left:10px;">🔄 重新加载</button>
+            <div id="configResult" class="result-box" style="margin-top:15px; display:none;"></div>
+        </div>
+
+        <!-- 地图查询 -->
+        <div class="tab-content" id="tab-map">
+            <h3 style="margin-bottom: 15px;">🗺️ 地图查询</h3>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>地图代码</label>
+                    <input id="mapCode" type="text" placeholder="例如: jskru">
+                </div>
+                <div class="form-group">
+                    <label>每页评论数</label>
+                    <input id="mapPageSize" type="number" value="5" min="1" max="20">
+                </div>
+            </div>
+            <button class="btn btn-primary" onclick="queryMap()">🔍 查询地图</button>
+            <div id="mapResult" class="result-box">
+                <div class="empty">输入地图代码后点击查询</div>
+            </div>
+            <div class="pagination" id="mapPagination" style="display:none;">
+                <button class="btn btn-sm btn-outline" onclick="mapPage('prev')">← 上一页</button>
+                <span id="mapPageInfo">第 1 页</span>
+                <button class="btn btn-sm btn-outline" onclick="mapPage('next')">下一页 →</button>
+                <span style="margin-left:10px;">跳转至</span>
+                <input id="mapPageInput" type="number" min="1" value="1">
+                <button class="btn btn-sm btn-primary" onclick="mapPage('jump')">跳转</button>
+            </div>
+        </div>
+
+        <!-- 玩家信息 -->
+        <div class="tab-content" id="tab-player">
+            <h3 style="margin-bottom: 15px;">👤 玩家信息查询 + 关系图谱</h3>
+            <div class="form-group">
+                <label>该玩家任意地图代码</label>
+                <input id="playerMapCode" type="text" placeholder="例如: jskru">
+            </div>
+            <button class="btn btn-primary" onclick="queryPlayer()">🔍 查询玩家信息</button>
+            <div id="playerResult" class="result-box">
+                <div class="empty">输入地图代码后点击查询</div>
+            </div>
+        </div>
+
+        <!-- 金矿打工 -->
+        <div class="tab-content" id="tab-gold">
+            <h3 style="margin-bottom: 15px;">⛏️ 金矿打工</h3>
+            <div class="form-group">
+                <label>目标玩家的地图代码</label>
+                <input id="goldMapCode" type="text" placeholder="例如: jskru">
+            </div>
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="goldExtra" checked>
+                    同时使用额外3个账号打工
+                </label>
+            </div>
+            <button class="btn btn-primary" onclick="doGoldMine()">⛏️ 开始打工</button>
+            <div id="goldResult" class="result-box">
+                <div class="empty">输入地图代码后点击开始打工</div>
+            </div>
+        </div>
+
+        <!-- 地图评论 -->
+        <div class="tab-content" id="tab-comment">
+            <h3 style="margin-bottom: 15px;">💬 地图评论</h3>
+            <div class="form-group">
+                <label>地图代码</label>
+                <input id="commentMapCode" type="text" placeholder="例如: jskru">
+            </div>
+            <div class="form-row">
+                <div class="form-group">
+                    <label>评论类型</label>
+                    <select id="commentType">
+                        <option value="text">自定义文本</option>
+                        <option value="stamp">预设表情 (stamp)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>
+                        <input type="checkbox" id="commentLike" checked>
+                        顺便点赞
+                    </label>
+                </div>
+            </div>
+            <div class="form-group" id="commentTextGroup">
+                <label>评论内容 (不超过20字)</label>
+                <input id="commentContent" type="text" placeholder="输入评论内容...">
+            </div>
+            <div class="form-group" id="commentStampGroup" style="display:none;">
+                <label>Stamp 内容</label>
+                <select id="commentStamp">
+                    <option value="0001">0001</option>
+                    <option value="0002">0002</option>
+                    <option value="0003">0003</option>
+                    <option value="0004">0004</option>
+                    <option value="random">🎲 随机</option>
+                </select>
+            </div>
+            <button class="btn btn-primary" onclick="doComment()">💬 发表评论</button>
+            <div id="commentResult" class="result-box">
+                <div class="empty">输入地图代码和评论内容后发表</div>
+            </div>
+        </div>
+
+        <!-- 广播地图 -->
+        <div class="tab-content" id="tab-broadcast">
+            <h3 style="margin-bottom: 15px;">📢 广播地图</h3>
+            <p style="color: #888; font-size: 14px; margin-bottom: 15px;">将地图推送到游戏首页，需要消耗喇叭（会自动领取免费喇叭）</p>
+            <div class="form-group">
+                <label>地图代码</label>
+                <input id="broadcastMapCode" type="text" placeholder="例如: jskru">
+            </div>
+            <button class="btn btn-primary" onclick="doBroadcast()">📢 广播地图</button>
+            <div id="broadcastResult" class="result-box">
+                <div class="empty">输入地图代码后点击广播</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ========== 状态管理 ==========
+        let currentMapPage = 1;
+        let currentMapCode = '';
+        let currentPlayerData = null;
+
+        // ========== Tab 切换 ==========
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.addEventListener('click', function() {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                this.classList.add('active');
+                document.getElementById(this.dataset.tab).classList.add('active');
+            });
+        });
+
+        // 评论类型切换
+        document.getElementById('commentType').addEventListener('change', function() {
+            const isStamp = this.value === 'stamp';
+            document.getElementById('commentTextGroup').style.display = isStamp ? 'none' : 'block';
+            document.getElementById('commentStampGroup').style.display = isStamp ? 'block' : 'none';
+        });
+
+        // ========== 配置管理 ==========
+        function loadConfig() {
+            fetch('/api/config')
+                .then(r => r.json())
+                .then(res => {
+                    if (res.success) {
+                        const d = res.data;
+                        document.getElementById('cfgJwt').value = d.jwt || '';
+                        document.getElementById('cfgDevice').value = d.device_id || '';
+                        document.getElementById('cfgSsn').value = d.ssn || '';
+                        document.getElementById('cfgVer').value = d.ver || '';
+                        document.getElementById('cfgCookie').value = d.cookie || '';
+                        document.getElementById('configResult').style.display = 'none';
+                    }
+                })
+                .catch(e => console.error(e));
+        }
+
+        function saveConfig() {
+            const data = {
+                jwt: document.getElementById('cfgJwt').value.trim(),
+                device_id: document.getElementById('cfgDevice').value.trim(),
+                ssn: document.getElementById('cfgSsn').value.trim(),
+                ver: document.getElementById('cfgVer').value.trim(),
+                cookie: document.getElementById('cfgCookie').value.trim()
+            };
+            const resultBox = document.getElementById('configResult');
+            resultBox.style.display = 'block';
+            resultBox.innerHTML = '<div class="loading">⏳ 保存中...</div>';
+
+            fetch('/api/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+            .then(r => r.json())
+            .then(res => {
+                if (res.success) {
+                    resultBox.innerHTML = `<div style="color:#2ecc71;">✅ ${res.message}</div>`;
+                } else {
+                    resultBox.innerHTML = `<div style="color:#e74c3c;">❌ ${res.error || '保存失败'}</div>`;
+                }
+            })
+            .catch(e => {
+                resultBox.innerHTML = `<div style="color:#e74c3c;">❌ 请求失败: ${e.message}</div>`;
+            });
+        }
+
+        // 加载配置
+        loadConfig();
+
+        // ========== 功能2: 地图查询 ==========
+        function queryMap(page) {
+            const mapCode = document.getElementById('mapCode').value.trim();
+            if (!mapCode) {
+                showResult('mapResult', '❌ 请输入地图代码', 'error');
+                return;
+            }
+            currentMapCode = mapCode;
+            const pageNum = page || currentMapPage || 1;
+            const pageSize = parseInt(document.getElementById('mapPageSize').value) || 5;
+
+            const resultBox = document.getElementById('mapResult');
+            resultBox.innerHTML = '<div class="loading">⏳ 加载中...</div>';
+            document.getElementById('mapPagination').style.display = 'none';
+
+            fetch('/api/map/query', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ map_code: mapCode, page: pageNum, page_size: pageSize })
+            })
+            .then(r => r.json())
+            .then(res => {
+                if (!res.success) {
+                    resultBox.innerHTML = `<div style="color:#e74c3c;">❌ ${res.error}</div>`;
+                    return;
+                }
+                renderMapResult(res.data, pageNum);
+            })
+            .catch(e => {
+                resultBox.innerHTML = `<div style="color:#e74c3c;">❌ 请求失败: ${e.message}</div>`;
+            });
+        }
+
+        function renderMapResult(data, page) {
+            const resultBox = document.getElementById('mapResult');
+            const map = data.map;
+            const comments = data.comments || [];
+            const hasMore = data.has_more !== false;
+
+            let html = `<div style="margin-bottom:20px;">`;
+            html += `<h4>📌 ${map.name}</h4>`;
+            html += `<div class="card-grid">`;
+            html += `<div class="card"><div class="label">地图码</div><div class="value">${map.code}</div></div>`;
+            html += `<div class="card"><div class="label">作者</div><div class="value">${map.owner.nickName}</div></div>`;
+            html += `<div class="card"><div class="label">游玩/通关</div><div class="value">${map.playCount} / ${map.finishCount}</div></div>`;
+            html += `<div class="card"><div class="label">点赞/点踩</div><div class="value">👍 ${map.likes} 👎 ${map.dislike}</div></div>`;
+            html += `<div class="card"><div class="label">状态</div><div class="value">${map.inTrash ? '🗑️ 已删除' : '✅ 正常'} ${map.status > 0 ? `(status:${map.status})` : ''}</div></div>`;
+            html += `<div class="card"><div class="label">最佳单人分数</div><div class="value">${map.bestScore || 0}</div></div>`;
+            if (map.tags && map.tags.length) {
+                html += `<div class="card"><div class="label">标签</div><div class="value">${map.tags.join(', ')}</div></div>`;
+            }
+            html += `</div>`;
+            
+            // 作者详情
+            html += `<div style="margin-top:15px;padding:12px;background:#f0f4ff;border-radius:10px;">`;
+            html += `<strong>👤 作者详情</strong><br>`;
+            html += `昵称: ${map.owner.nickName} | 短ID: ${map.owner.userShortId || '无'} | 段位: ${map.owner.dan} | 等级: ${map.owner.level}<br>`;
+            html += `战队: ${map.owner.clan} | 位置: ${map.owner.province || ''} ${map.owner.city || ''}`;
+            html += `</div>`;
+
+            // 排行榜
+            if (map.top && map.top.length) {
+                html += `<div style="margin-top:15px;"><strong>🏆 排行榜 Top 3</strong><br>`;
+                map.top.forEach((item, i) => {
+                    html += `${i+1}. ${item.player.nickName} | 分数: ${item.record}<br>`;
+                });
+                html += `</div>`;
+            }
+
+            // 评论
+            html += `<div style="margin-top:20px;"><strong>💬 评论 (第 ${page} 页)</strong>`;
+            if (comments.length === 0) {
+                html += `<div style="color:#999;padding:10px 0;">暂无评论</div>`;
+            } else {
+                comments.forEach(c => {
+                    const time = c.ts ? new Date(c.ts).toLocaleString() : '';
+                    html += `<div class="comment-item">`;
+                    html += `<span class="user">${c.player.nickName}</span> `;
+                    html += `<span class="time">${time}</span><br>`;
+                    html += `<span>${c.type === 'text' ? c.content : '📌 stamp: ' + c.content}</span>`;
+                    html += `</div>`;
+                });
+            }
+            html += `</div>`;
+            html += `</div>`;
+
+            resultBox.innerHTML = html;
+
+            // 分页控制
+            const pagination = document.getElementById('mapPagination');
+            pagination.style.display = 'flex';
+            document.getElementById('mapPageInfo').textContent = `第 ${page} 页`;
+            document.getElementById('mapPageInput').value = page;
+            currentMapPage = page;
+        }
+
+        function mapPage(action) {
+            if (action === 'prev') {
+                if (currentMapPage > 1) queryMap(currentMapPage - 1);
+            } else if (action === 'next') {
+                queryMap(currentMapPage + 1);
+            } else if (action === 'jump') {
+                const p = parseInt(document.getElementById('mapPageInput').value);
+                if (p > 0) queryMap(p);
+            }
+        }
+
+        // 回车键触发查询
+        document.getElementById('mapCode').addEventListener('keydown', e => {
+            if (e.key === 'Enter') queryMap(1);
+        });
+
+        // ========== 功能4: 玩家信息 ==========
+        function queryPlayer() {
+            const mapCode = document.getElementById('playerMapCode').value.trim();
+            if (!mapCode) {
+                showResult('playerResult', '❌ 请输入地图代码', 'error');
+                return;
+            }
+
+            const resultBox = document.getElementById('playerResult');
+            resultBox.innerHTML = '<div class="loading">⏳ 加载玩家信息...</div>';
+
+            fetch('/api/player/info', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ map_code: mapCode })
+            })
+            .then(r => r.json())
+            .then(res => {
+                if (!res.success) {
+                    resultBox.innerHTML = `<div style="color:#e74c3c;">❌ ${res.error}</div>`;
+                    return;
+                }
+                currentPlayerData = res.data;
+                renderPlayerResult(res.data);
+            })
+            .catch(e => {
+                resultBox.innerHTML = `<div style="color:#e74c3c;">❌ 请求失败: ${e.message}</div>`;
+            });
+        }
+
+        function renderPlayerResult(data) {
+            const resultBox = document.getElementById('playerResult');
+            const p = data.player;
+            const relations = data.relations || [];
+
+            let html = `<div style="display:flex;align-items:center;gap:20px;margin-bottom:20px;">`;
+            html += `<div style="width:80px;height:80px;border-radius:50%;background:#e8ecf1;overflow:hidden;border:3px solid #667eea;">`;
+            html += `<img src="${p.avatarUrl || `https://ui-avatars.com/api/?name=${p.nickName}&background=random&size=80`}" style="width:100%;height:100%;object-fit:cover;" onerror="this.src='https://ui-avatars.com/api/?name=${p.nickName}&background=random&size=80'">`;
+            html += `</div>`;
+            html += `<div><h3 style="margin:0;">${p.nickName}</h3>`;
+            html += `<div style="color:#888;">${p.title || '无称号'} | ${p.clan}</div>`;
+            html += `<div style="font-size:14px;">短ID: ${p.userShortId || '无'} | 段位: ${p.dan} | 等级: ${p.level}</div>`;
+            html += `</div></div>`;
+
+            html += `<div class="card-grid">`;
+            html += `<div class="card"><div class="label">性别</div><div class="value">${p.gender}</div></div>`;
+            html += `<div class="card"><div class="label">位置</div><div class="value">${p.province || ''} ${p.city || ''}</div></div>`;
+            html += `<div class="card"><div class="label">人品值</div><div class="value">${p.honesty || 0}</div></div>`;
+            html += `<div class="card"><div class="label">联赛排名</div><div class="value">#${p.rank || 0}</div></div>`;
+            html += `<div class="card"><div class="label">创造经验</div><div class="value">${p.expCreative || 0}</div></div>`;
+            html += `<div class="card"><div class="label">操作经验</div><div class="value">${p.expSkill || 0}</div></div>`;
+            html += `<div class="card"><div class="label">创造排名</div><div class="value">#${p.creativeRank || 0}</div></div>`;
+            html += `<div class="card"><div class="label">操作排名</div><div class="value">#${p.skillRank || 0}</div></div>`;
+            html += `</div>`;
+
+            // 地图作品
+            if (p.maps && p.maps.length) {
+                html += `<div style="margin-top:15px;"><strong>🗺️ 发布的地图 (${p.maps.length}个)</strong><br>`;
+                html += p.maps.slice(0, 15).join('  ');
+                if (p.maps.length > 15) html += ` ... 共${p.maps.length}个`;
+                html += `</div>`;
+            }
+
+            // 关系
+            html += `<div style="margin-top:20px;"><strong>💕 亲密关系 (${relations.length}人)</strong>`;
+            if (relations.length === 0) {
+                html += `<div style="color:#999;padding:10px 0;">暂无亲密关系</div>`;
+            } else {
+                const relGroups = {};
+                relations.forEach(r => {
+                    if (!relGroups[r.relationType]) relGroups[r.relationType] = [];
+                    relGroups[r.relationType].push(r);
+                });
+                Object.keys(relGroups).forEach(type => {
+                    const list = relGroups[type];
+                    html += `<div style="margin:8px 0;padding:8px 12px;background:#f8f9fc;border-radius:8px;">`;
+                    html += `<strong style="color:${list[0].relationColor || '#667eea'};">${type}</strong>: `;
+                    html += list.slice(0, 5).map(r => `${r.nickName}(${r.intimacy})`).join('、');
+                    if (list.length > 5) html += ` 等${list.length}人`;
+                    html += `</div>`;
+                });
+            }
+            html += `</div>`;
+
+            // 下载图谱按钮
+            if (relations.length > 0) {
+                html += `<div style="margin-top:20px;">`;
+                html += `<button class="btn btn-success" onclick="downloadGraph()">📥 下载关系图谱 (HTML)</button>`;
+                html += ` <span style="color:#888;font-size:13px;">包含 ${relations.length} 个好友</span>`;
+                html += `</div>`;
+            }
+
+            resultBox.innerHTML = html;
+        }
+
+        function downloadGraph() {
+            if (!currentPlayerData) {
+                alert('请先查询玩家信息');
+                return;
+            }
+            const btn = event.target;
+            btn.textContent = '⏳ 生成中...';
+            btn.disabled = true;
+
+            fetch('/api/player/graph', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    player: currentPlayerData.player,
+                    relations: currentPlayerData.relations
+                })
+            })
+            .then(r => r.json())
+            .then(res => {
+                if (res.success) {
+                    // 直接下载
+                    window.location.href = res.url;
+                    showResult('playerResult', `✅ 关系图谱已生成: ${res.filename}`, 'success');
+                } else {
+                    showResult('playerResult', `❌ 生成失败: ${res.error}`, 'error');
+                }
+            })
+            .catch(e => {
+                showResult('playerResult', `❌ 请求失败: ${e.message}`, 'error');
+            })
+            .finally(() => {
+                btn.textContent = '📥 下载关系图谱 (HTML)';
+                btn.disabled = false;
+            });
+        }
+
+        document.getElementById('playerMapCode').addEventListener('keydown', e => {
+            if (e.key === 'Enter') queryPlayer();
+        });
+
+        // ========== 功能6: 金矿打工 ==========
+        function doGoldMine() {
+            const mapCode = document.getElementById('goldMapCode').value.trim();
+            if (!mapCode) {
+                showResult('goldResult', '❌ 请输入地图代码', 'error');
+                return;
+            }
+            const useExtra = document.getElementById('goldExtra').checked;
+
+            const resultBox = document.getElementById('goldResult');
+            resultBox.innerHTML = '<div class="loading">⏳ 打工中...</div>';
+
+            fetch('/api/goldmine/work', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ map_code: mapCode, use_extra: useExtra })
+            })
+            .then(r => r.json())
+            .then(res => {
+                if (!res.success) {
+                    resultBox.innerHTML = `<div style="color:#e74c3c;">❌ ${res.error}</div>`;
+                    return;
+                }
+                renderGoldResult(res.data);
+            })
+            .catch(e => {
+                resultBox.innerHTML = `<div style="color:#e74c3c;">❌ 请求失败: ${e.message}</div>`;
+            });
+        }
+
+        function renderGoldResult(data) {
+            const resultBox = document.getElementById('goldResult');
+            let html = '';
+
+            // 主账号
+            const main = data.main || {};
+            if (main.success) {
+                html += `<div style="color:#2ecc71;">✅ 主账号打工成功！为 ${main.nick} 打工</div>`;
+            } else {
+                html += `<div style="color:#e74c3c;">❌ 主账号打工失败: ${main.error || '未知错误'}</div>`;
+            }
+
+            // 额外账号
+            if (data.extra && data.extra.length) {
+                html += `<div style="margin-top:15px;"><strong>📊 额外账号打工结果</strong></div>`;
+                let successCount = 0;
+                data.extra.forEach(r => {
+                    if (r.success) {
+                        html += `<div style="color:#2ecc71;">✅ 账号 ${r.index}: 为 ${r.nick} 打工成功</div>`;
+                        successCount++;
+                    } else {
+                        html += `<div style="color:#e74c3c;">❌ 账号 ${r.index}: ${r.error}</div>`;
+                    }
+                });
+                html += `<div style="margin-top:10px;">成功: ${successCount}/${data.extra.length} 个账号</div>`;
+            }
+
+            resultBox.innerHTML = html;
+        }
+
+        document.getElementById('goldMapCode').addEventListener('keydown', e => {
+            if (e.key === 'Enter') doGoldMine();
+        });
+
+        // ========== 功能7: 地图评论 ==========
+        function doComment() {
+            const mapCode = document.getElementById('commentMapCode').value.trim();
+            if (!mapCode) {
+                showResult('commentResult', '❌ 请输入地图代码', 'error');
+                return;
+            }
+
+            const type = document.getElementById('commentType').value;
+            let content = '';
+            if (type === 'text') {
+                content = document.getElementById('commentContent').value.trim();
+                if (!content) {
+                    showResult('commentResult', '❌ 请输入评论内容', 'error');
+                    return;
+                }
+                if (content.length > 20) {
+                    showResult('commentResult', '❌ 评论内容不能超过20字', 'error');
+                    return;
+                }
+            } else {
+                const stamp = document.getElementById('commentStamp').value;
+                content = stamp === 'random' ? String(Math.floor(Math.random() * 4) + 1).padStart(4, '0') : stamp;
+            }
+
+            const like = document.getElementById('commentLike').checked;
+
+            const resultBox = document.getElementById('commentResult');
+            resultBox.innerHTML = '<div class="loading">⏳ 发表中...</div>';
+
+            fetch('/api/map/comment', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    map_code: mapCode,
+                    comment_type: type,
+                    content: content,
+                    like: like
+                })
+            })
+            .then(r => r.json())
+            .then(res => {
+                if (res.success) {
+                    resultBox.innerHTML = `<div style="color:#2ecc71;">✅ ${res.data.message}</div>`;
+                    if (res.data.comment_id) {
+                        resultBox.innerHTML += `<div style="color:#888;font-size:13px;">评论ID: ${res.data.comment_id}</div>`;
+                    }
+                } else {
+                    let msg = res.error;
+                    if (res.code === 1105) msg = '⚠️ 您已评论过该地图，每张地图只能评论一次';
+                    else if (res.code === 1103) msg = '⚠️ 包含违规词，请修改内容';
+                    else if (res.code === 1001) msg = '⚠️ 参数无效，请检查内容';
+                    resultBox.innerHTML = `<div style="color:#e74c3c;">❌ ${msg}</div>`;
+                }
+            })
+            .catch(e => {
+                resultBox.innerHTML = `<div style="color:#e74c3c;">❌ 请求失败: ${e.message}</div>`;
+            });
+        }
+
+        document.getElementById('commentMapCode').addEventListener('keydown', e => {
+            if (e.key === 'Enter') doComment();
+        });
+        document.getElementById('commentContent').addEventListener('keydown', e => {
+            if (e.key === 'Enter') doComment();
+        });
+
+        // ========== 功能8: 广播地图 ==========
+        function doBroadcast() {
+            const mapCode = document.getElementById('broadcastMapCode').value.trim();
+            if (!mapCode) {
+                showResult('broadcastResult', '❌ 请输入地图代码', 'error');
+                return;
+            }
+
+            const resultBox = document.getElementById('broadcastResult');
+            resultBox.innerHTML = '<div class="loading">⏳ 广播中...</div>';
+
+            fetch('/api/map/broadcast', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ map_code: mapCode })
+            })
+            .then(r => r.json())
+            .then(res => {
+                if (res.success) {
+                    resultBox.innerHTML = `<div style="color:#2ecc71;">✅ ${res.message}</div>`;
+                } else {
+                    resultBox.innerHTML = `<div style="color:#e74c3c;">❌ ${res.error}</div>`;
+                }
+            })
+            .catch(e => {
+                resultBox.innerHTML = `<div style="color:#e74c3c;">❌ 请求失败: ${e.message}</div>`;
+            });
+        }
+
+        document.getElementById('broadcastMapCode').addEventListener('keydown', e => {
+            if (e.key === 'Enter') doBroadcast();
+        });
+
+        // ========== 工具函数 ==========
+        function showResult(id, message, type) {
+            const box = document.getElementById(id);
+            const color = type === 'error' ? '#e74c3c' : type === 'success' ? '#2ecc71' : '#667eea';
+            box.innerHTML = `<div style="color:${color};">${message}</div>`;
+        }
+    </script>
+</body>
+</html>
