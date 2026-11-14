@@ -1,0 +1,8 @@
+5.2.1
+python版
+（
+md5:a69d2ecec827cfa065a88a8cdd643467
+sha1:f350111e07078d2f57b3addf0d4b3878eabb3b22
+sha256:ab2aa10ed0839abceed27901b747890cab4cec24ff0c2cd547fb7d48988d4e00
+）
+shell版丢失了
